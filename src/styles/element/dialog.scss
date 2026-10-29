@@ -1,0 +1,132 @@
+/**
+ * 弹窗与抽屉：12 圆角、56 header、底部按钮右对齐
+ */
+.el-dialog {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-lg);
+
+  .el-dialog__header {
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+    /* 右侧留出关闭按钮位置，避免标题与关闭按钮重叠 */
+    padding: 0 52px 0 20px;
+    margin: 0;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  .el-dialog__title {
+    font-size: var(--app-font-16);
+    font-weight: 500;
+    color: var(--app-text-1);
+  }
+
+  .el-dialog__headerbtn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 3;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: var(--app-radius-xs);
+    transition: background-color var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      background: var(--app-info-bg);
+    }
+
+    .el-dialog__close {
+      font-size: 16px;
+    }
+  }
+
+  .el-dialog__body {
+    padding: 20px;
+    color: var(--app-text-2);
+  }
+
+  .el-dialog__footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 20px;
+    border-top: 1px solid var(--app-border);
+  }
+
+  .el-dialog__footer .el-button + .el-button {
+    margin-left: 8px;
+  }
+}
+
+.el-drawer {
+  box-shadow: var(--app-shadow-lg);
+
+  .el-drawer__header {
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+    padding: 0 52px 0 20px;
+    margin: 0;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  .el-drawer__close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 3;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--app-radius-xs);
+
+    &:hover {
+      background: var(--app-info-bg);
+    }
+  }
+
+  .el-drawer__title {
+    font-size: var(--app-font-16);
+    font-weight: 500;
+    color: var(--app-text-1);
+  }
+
+  .el-drawer__body {
+    padding: 20px;
+    overflow: auto;
+  }
+
+  .el-drawer__footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--app-border);
+  }
+}
+
+/* 消息确认框 */
+.el-message-box {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--app-radius-lg);
+
+  .el-message-box__header {
+    padding: 16px 20px 8px;
+  }
+
+  .el-message-box__title {
+    font-size: var(--app-font-16);
+    font-weight: 500;
+  }
+
+  .el-message-box__content {
+    padding: 8px 20px 16px;
+    color: var(--app-text-2);
+  }
+
+  .el-message-box__btns {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 20px;
+    border-top: 1px solid var(--app-border);
+  }
+}

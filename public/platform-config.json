@@ -1,0 +1,8 @@
+{
+  "Version": "1.0.0",
+  "Title": "OA 协同办公",
+  "FixedHeader": true,
+  "KeepAlive": true,
+  "HideTabs": false,
+  "ResponsiveStorageNameSpace": "tcy-"
+}

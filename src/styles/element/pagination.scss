@@ -1,0 +1,62 @@
+/**
+ * 分页：32 高、6 圆角、当前页主色实心
+ */
+.el-pagination {
+  --el-pagination-button-height: var(--app-control-height);
+  --el-pagination-button-width: var(--app-control-height);
+  --el-pagination-font-size: var(--app-font-13);
+
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  font-weight: 400;
+  color: var(--app-text-2);
+
+  .el-pagination__total,
+  .el-pagination__jump {
+    margin-left: 8px;
+    font-size: var(--app-font-13);
+    color: var(--app-text-3);
+  }
+
+  .el-pagination__sizes {
+    margin-right: 4px;
+  }
+
+  .btn-prev,
+  .btn-next,
+  .el-pager li,
+  .el-pagination__sizes .el-select__wrapper {
+    border-radius: var(--app-radius-sm);
+  }
+
+  .el-pager li {
+    min-width: var(--app-control-height);
+    height: var(--app-control-height);
+    font-weight: 400;
+    line-height: var(--app-control-height);
+
+    &:hover {
+      color: var(--app-primary);
+    }
+
+    &.is-active {
+      font-weight: 500;
+      color: #fff;
+      background: var(--app-primary);
+    }
+  }
+
+  &.is-background .btn-prev,
+  &.is-background .btn-next {
+    background: var(--app-subtle);
+  }
+}
+
+/* 分页容器：贴近表格右下方 */
+.app-table__pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 4px;
+}

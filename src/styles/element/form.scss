@@ -1,0 +1,81 @@
+/**
+ * 表单类组件：input / select / form / checkbox / radio / switch
+ */
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.el-form-item__label {
+  font-weight: 400;
+  color: var(--app-text-2);
+}
+
+.el-form-item__error {
+  padding-top: 4px;
+  font-size: var(--app-font-12);
+}
+
+/* 输入类控件：更轻的描边，聚焦时用主色描边而非重阴影 */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: var(--app-radius-sm);
+  box-shadow: 0 0 0 1px var(--app-border) inset;
+  transition: box-shadow var(--app-duration-fast) var(--app-ease);
+
+  &:hover {
+    box-shadow: 0 0 0 1px var(--app-border-strong) inset;
+  }
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--app-primary) inset;
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: var(--app-text-4);
+}
+
+.el-input-number .el-input__wrapper {
+  padding-right: 32px;
+}
+
+/* 表单中的只读文本 */
+.el-form-item__content > .el-text {
+  color: var(--app-text-2);
+}
+
+.el-checkbox,
+.el-radio {
+  font-weight: 400;
+  color: var(--app-text-2);
+}
+
+.el-checkbox__label,
+.el-radio__label {
+  padding-left: 6px;
+  font-size: var(--app-font-14);
+}
+
+.el-switch.is-checked .el-switch__core {
+  border-color: var(--app-primary);
+  background-color: var(--app-primary);
+}
+
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper {
+  width: 100%;
+}
+
+.el-date-editor--datetimerange,
+.el-date-editor--daterange {
+  width: 100% !important;
+}
+
+/* 表单底部的操作区（新增/编辑抽屉、弹窗） */
+.el-form-item.is-last-item {
+  margin-bottom: 0;
+}

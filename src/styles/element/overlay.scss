@@ -1,0 +1,110 @@
+/**
+ * 浮层类组件：dropdown / tooltip / popper / message / notification
+ */
+.el-popper.is-light {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-base);
+
+  .el-popper__arrow::before {
+    border: 1px solid var(--app-border);
+    background: var(--app-container);
+  }
+}
+
+.el-dropdown-menu {
+  padding: 4px;
+  border-radius: var(--app-radius-md);
+
+  .el-dropdown-menu__item {
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: var(--app-font-14);
+    line-height: 32px;
+    border-radius: var(--app-radius-xs);
+
+    &:not(.is-disabled):hover,
+    &:not(.is-disabled):focus {
+      color: var(--app-primary);
+      background: var(--app-primary-bg);
+    }
+  }
+
+  .el-dropdown-menu__item--divided {
+    margin-top: 4px;
+    border-top-color: var(--app-border);
+
+    &::before {
+      display: none;
+    }
+  }
+}
+
+.el-tooltip__popper,
+.el-popper.is-dark {
+  padding: 6px 10px;
+  font-size: var(--app-font-12);
+  border-radius: var(--app-radius-xs);
+  background: rgb(29 33 41 / 92%);
+}
+
+.el-select-dropdown {
+  padding: 4px;
+  border-radius: var(--app-radius-md);
+
+  .el-select-dropdown__item {
+    height: 32px;
+    font-size: var(--app-font-14);
+    line-height: 32px;
+    border-radius: var(--app-radius-xs);
+
+    &.is-hovering {
+      background: var(--app-primary-bg);
+    }
+
+    &.is-selected {
+      font-weight: 500;
+      color: var(--app-primary);
+    }
+  }
+}
+
+/* 全局消息提示 */
+.app-message.el-message {
+  min-width: 240px;
+  padding: 10px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-base);
+
+  .el-message__content {
+    font-size: var(--app-font-14);
+    color: var(--app-text-1);
+  }
+
+  .el-message__closeBtn {
+    border-radius: var(--app-radius-xs);
+  }
+}
+
+.el-notification {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-base);
+
+  .el-notification__title {
+    font-size: var(--app-font-14);
+    font-weight: 500;
+    color: var(--app-text-1);
+  }
+
+  .el-notification__content {
+    font-size: var(--app-font-13);
+    color: var(--app-text-2);
+  }
+}
+
+/* 遮罩层统一为轻透明，避免界面闪烁 */
+.el-overlay {
+  background-color: rgb(29 33 41 / 40%);
+}

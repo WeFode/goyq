@@ -1,0 +1,184 @@
+/**
+ * 顶栏：高 56、白底、底部 1px 细线，工具项为 32 圆角方块
+ */
+.app-navbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--app-navbar-height);
+  padding: 0 16px 0 8px;
+  background: var(--app-container);
+  border-bottom: 1px solid var(--app-border);
+
+  &__left,
+  &__right {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+  }
+
+  &__left {
+    gap: 4px;
+  }
+
+  &__right {
+    gap: 4px;
+  }
+
+  /* 折叠按钮 / 工具图标 */
+  &__action {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--app-text-2);
+    cursor: pointer;
+    border-radius: var(--app-radius-sm);
+    transition:
+      background-color var(--app-duration-fast) var(--app-ease),
+      color var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      color: var(--app-text-1);
+      background: var(--app-info-bg);
+    }
+  }
+
+  /* 菜单搜索入口：仿飞书搜索框 */
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 200px;
+    height: 32px;
+    padding: 0 10px;
+    margin-right: 4px;
+    font-size: var(--app-font-13);
+    color: var(--app-text-3);
+    cursor: pointer;
+    background: var(--app-subtle);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+    transition: all var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      color: var(--app-text-2);
+      border-color: var(--app-border-strong);
+      background: var(--app-container);
+    }
+
+    &-text {
+      flex: 1;
+      overflow: hidden;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &-kbd {
+      flex-shrink: 0;
+      padding: 1px 5px;
+      font-size: 11px;
+      color: var(--app-text-3);
+      background: var(--app-container);
+      border: 1px solid var(--app-border);
+      border-radius: var(--app-radius-xs);
+    }
+  }
+
+  /* 用户区域 */
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 8px;
+    margin-left: 4px;
+    cursor: pointer;
+    border-radius: var(--app-radius-sm);
+    transition: background-color var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      background: var(--app-info-bg);
+    }
+  }
+
+  &__user-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 140px;
+    line-height: 1.25;
+  }
+
+  &__user-name {
+    overflow: hidden;
+    font-size: var(--app-font-14);
+    font-weight: 500;
+    color: var(--app-text-1);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__user-dept {
+    overflow: hidden;
+    font-size: var(--app-font-12);
+    color: var(--app-text-3);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__divider {
+    width: 1px;
+    height: 18px;
+    margin: 0 6px;
+    background: var(--app-border);
+  }
+}
+
+/* 面包屑 */
+.app-breadcrumb {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+
+  .el-breadcrumb {
+    font-size: var(--app-font-13);
+  }
+
+  .el-breadcrumb__inner,
+  .el-breadcrumb__inner a {
+    font-weight: 400;
+    color: var(--app-text-3);
+
+    &:hover {
+      color: var(--app-primary);
+    }
+  }
+
+  .el-breadcrumb__item:last-child .el-breadcrumb__inner {
+    font-weight: 500;
+    color: var(--app-text-1);
+  }
+
+  .el-breadcrumb__separator {
+    margin: 0 6px;
+    color: var(--app-text-4);
+  }
+}
+
+@media (width <= 768px) {
+  .app-navbar {
+    padding-right: 8px;
+
+    &__search,
+    &__user-info,
+    &__divider {
+      display: none;
+    }
+  }
+}

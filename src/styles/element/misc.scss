@@ -1,0 +1,159 @@
+/**
+ * 零散组件统一收口：tag / card / descriptions / timeline / steps / tree / backtop
+ */
+.el-tag {
+  height: 22px;
+  padding: 0 8px;
+  font-size: var(--app-font-12);
+  font-weight: 400;
+  line-height: 20px;
+  border-radius: var(--app-radius-xs);
+}
+
+.el-tag--large {
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--app-font-13);
+  line-height: 24px;
+}
+
+.el-card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  box-shadow: none;
+
+  .el-card__header {
+    padding: 14px 20px;
+    font-weight: 500;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  .el-card__body {
+    padding: var(--app-card-padding);
+  }
+}
+
+.el-descriptions {
+  .el-descriptions__label {
+    width: 112px;
+    font-weight: 400;
+    color: var(--app-text-3);
+    background: var(--app-subtle);
+  }
+
+  .el-descriptions__content {
+    color: var(--app-text-1);
+  }
+
+  .el-descriptions__cell {
+    padding: 10px 12px;
+  }
+}
+
+.el-timeline {
+  padding-left: 2px;
+
+  .el-timeline-item__tail {
+    border-left-color: var(--app-border);
+  }
+
+  .el-timeline-item__node {
+    background: var(--app-border-strong);
+  }
+
+  .el-timeline-item__timestamp {
+    font-size: var(--app-font-12);
+    color: var(--app-text-3);
+  }
+}
+
+.el-steps {
+  .el-step__title {
+    font-size: var(--app-font-14);
+  }
+
+  .el-step__title.is-process {
+    font-weight: 500;
+  }
+}
+
+.el-tree {
+  --el-tree-node-hover-bg-color: var(--app-primary-bg);
+
+  color: var(--app-text-2);
+
+  .el-tree-node__content {
+    height: 34px;
+    border-radius: var(--app-radius-xs);
+  }
+
+  .el-tree-node.is-current > .el-tree-node__content {
+    font-weight: 500;
+    color: var(--app-primary);
+    background: var(--app-primary-bg);
+  }
+}
+
+.el-backtop {
+  --el-backtop-bg-color: var(--app-container);
+  --el-backtop-hover-bg-color: var(--app-primary-bg);
+
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.el-divider {
+  border-color: var(--app-border);
+}
+
+.el-loading-mask {
+  background-color: rgb(255 255 255 / 80%);
+}
+
+.el-alert {
+  border-radius: var(--app-radius-sm);
+}
+
+.el-collapse {
+  border-color: var(--app-border);
+
+  .el-collapse-item__header {
+    font-size: var(--app-font-14);
+    font-weight: 500;
+    border-bottom-color: var(--app-border);
+  }
+
+  .el-collapse-item__wrap {
+    border-bottom-color: var(--app-border);
+  }
+}
+
+.el-upload-dragger {
+  border-radius: var(--app-radius-md);
+  border-color: var(--app-border);
+}
+
+/* 页面切换过渡（飞书式轻位移） */
+.fade-transform-enter-active,
+.fade-transform-leave-active {
+  transition: all var(--app-duration-base) var(--app-ease);
+}
+
+.fade-transform-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.fade-transform-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+#nprogress .bar {
+  height: 2px;
+  background: var(--app-primary) !important;
+}
+
+#nprogress .peg {
+  display: none;
+}

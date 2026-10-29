@@ -1,0 +1,75 @@
+/**
+ * Element Plus 主题变量二次定制
+ * 所有组件的默认色值、圆角、尺寸均由这里统一收口
+ */
+@use "sass:color";
+
+@mixin el-color-vars($name, $color) {
+  --el-color-#{$name}: #{$color};
+  --el-color-#{$name}-light-3: #{color.mix(#fff, $color, 30%)};
+  --el-color-#{$name}-light-5: #{color.mix(#fff, $color, 50%)};
+  --el-color-#{$name}-light-7: #{color.mix(#fff, $color, 70%)};
+  --el-color-#{$name}-light-8: #{color.mix(#fff, $color, 80%)};
+  --el-color-#{$name}-light-9: #{color.mix(#fff, $color, 90%)};
+  --el-color-#{$name}-dark-2: #{color.mix(#000, $color, 20%)};
+}
+
+:root {
+  /* ============ 主题色 ============ */
+  @include el-color-vars("primary", #1f5ae0);
+  @include el-color-vars("success", #0faf5f);
+  @include el-color-vars("warning", #e37318);
+  @include el-color-vars("danger", #d9372b);
+  @include el-color-vars("error", #d9372b);
+  @include el-color-vars("info", #4e5969);
+
+  /* ============ 文本 ============ */
+  --el-text-color-primary: var(--app-text-1);
+  --el-text-color-regular: var(--app-text-2);
+  --el-text-color-secondary: var(--app-text-3);
+  --el-text-color-placeholder: var(--app-text-4);
+  --el-text-color-disabled: var(--app-text-4);
+
+  /* ============ 边框 ============ */
+  --el-border-color: var(--app-border);
+  --el-border-color-light: #ebedf0;
+  --el-border-color-lighter: #eff1f4;
+  --el-border-color-extra-light: #f5f6f8;
+  --el-border-color-dark: var(--app-border-strong);
+  --el-border-color-darker: var(--app-text-4);
+  --el-border-radius-base: var(--app-radius-sm);
+  --el-border-radius-small: var(--app-radius-xs);
+  --el-border-radius-round: var(--app-radius-round);
+
+  /* ============ 背景与填充 ============ */
+  --el-bg-color: var(--app-container);
+  --el-bg-color-page: var(--app-page-bg);
+  --el-bg-color-overlay: var(--app-container);
+  --el-fill-color: #f2f3f5;
+  --el-fill-color-light: #f7f8fa;
+  --el-fill-color-lighter: #fafbfc;
+  --el-fill-color-extra-light: #fcfcfd;
+  --el-fill-color-blank: var(--app-container);
+
+  /* ============ 字体 ============ */
+  --el-font-size-base: var(--app-font-14);
+  --el-font-size-small: var(--app-font-13);
+  --el-font-size-extra-small: var(--app-font-12);
+  --el-font-size-medium: var(--app-font-16);
+  --el-font-size-large: 18px;
+
+  /* ============ 控件尺寸 ============ */
+  --el-component-size: var(--app-control-height);
+  --el-component-size-small: 28px;
+  --el-component-size-large: 36px;
+
+  /* ============ 阴影 ============ */
+  --el-box-shadow: var(--app-shadow-base);
+  --el-box-shadow-light: var(--app-shadow-sm);
+  --el-box-shadow-lighter: var(--app-shadow-sm);
+  --el-box-shadow-dark: var(--app-shadow-lg);
+
+  /* ============ 动效 ============ */
+  --el-transition-duration: var(--app-duration-base);
+  --el-transition-duration-fast: var(--app-duration-fast);
+}

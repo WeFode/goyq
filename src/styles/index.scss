@@ -1,0 +1,19 @@
+/**
+ * 全局样式入口
+ * 加载顺序：reset → tokens → element 变量 → element 组件覆盖 → 布局 → 工具类
+ * 注意：element-plus/dist/index.css 必须先于本文件引入（见 main.ts）
+ */
+@use "./reset";
+@use "./tokens";
+@use "./element/vars";
+@use "./element/form";
+@use "./element/button";
+@use "./element/table";
+@use "./element/pagination";
+@use "./element/dialog";
+@use "./element/overlay";
+@use "./element/misc";
+@use "./layout/sidebar";
+@use "./layout/navbar";
+@use "./layout/tags";
+@use "./utilities";

@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+.DS_Store
+*.local
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.log
+stats.html
+
+# 本地验证截图
+shots/
+login-desktop.png

@@ -1,0 +1,88 @@
+/**
+ * 表格：表头浅灰、行高 48、极细分割线、hover 主色浅底
+ */
+.el-table {
+  --el-table-border-color: #ebedf0;
+  --el-table-header-bg-color: #f7f8fa;
+  --el-table-header-text-color: var(--app-text-2);
+  --el-table-row-hover-bg-color: #f7f9fc;
+  --el-table-text-color: var(--app-text-2);
+
+  font-size: var(--app-font-14);
+
+  th.el-table__cell {
+    height: 44px;
+    padding: 0;
+    font-weight: 500;
+    background: var(--el-table-header-bg-color);
+
+    .cell {
+      font-weight: 500;
+      color: var(--app-text-2);
+    }
+  }
+
+  td.el-table__cell {
+    height: 48px;
+    padding: 8px 0;
+  }
+
+  .cell {
+    padding: 0 12px;
+    line-height: var(--app-line-height);
+  }
+
+  /* 不需要表格外层再加阴影与粗边框 */
+  &::before,
+  &::after {
+    display: none;
+  }
+
+  .el-table__inner-wrapper::before {
+    display: none;
+  }
+
+  .el-table__empty-block {
+    min-height: 240px;
+    background: var(--app-container);
+  }
+
+  /* 固定在左右两侧的列，避免与 body 分割线错位 */
+  .el-table-fixed-column--left,
+  .el-table-fixed-column--right {
+    background: var(--app-container);
+  }
+
+  .el-table__row--striped td.el-table__cell {
+    background: var(--app-subtle);
+  }
+
+  .el-table__row:hover > td.el-table__cell {
+    background: var(--el-table-row-hover-bg-color);
+  }
+
+  /* 行内开关与标签的垂直对齐 */
+  .el-switch,
+  .el-tag {
+    vertical-align: middle;
+  }
+}
+
+.el-table--border .el-table__cell {
+  border-right-color: var(--el-table-border-color);
+}
+
+/* 树形表格展开箭头位置微调 */
+.el-table .el-table__expand-icon {
+  color: var(--app-text-3);
+}
+
+/* 空状态 */
+.el-empty {
+  padding: 32px 0;
+
+  .el-empty__description p {
+    color: var(--app-text-3);
+    font-size: var(--app-font-13);
+  }
+}

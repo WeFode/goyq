@@ -1,0 +1,94 @@
+/**
+ * 精简版样式重置，仅处理浏览器默认差异
+ * 完整 reset 会与 Element Plus 组件样式冲突，因此保持克制
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  font-size: var(--app-font-14);
+  line-height: var(--app-line-height);
+  color: var(--app-text-1);
+  background: var(--app-page-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+dl,
+dd {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  color: var(--app-primary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--app-primary-hover);
+  }
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img {
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+/* 滚动条：细轨、低对比，避免视觉噪音 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d9dce1;
+  border: 2px solid transparent;
+  border-radius: var(--app-radius-round);
+  background-clip: content-box;
+
+  &:hover {
+    background: #c1c6ce;
+    background-clip: content-box;
+  }
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,79 @@
+/**
+ * 设计令牌（唯一色彩/尺寸来源）
+ * 设计语言：飞书交互质感 + 政企沉稳配色
+ */
+:root {
+  /* ============ 品牌色 ============ */
+  --app-primary: #1f5ae0;
+  --app-primary-hover: #3d74ea;
+  --app-primary-active: #1a4cc2;
+  --app-primary-bg: #eef3ff;
+  --app-primary-border: #a9c3f5;
+
+  /* ============ 中性色 ============ */
+  --app-page-bg: #f5f6f8;
+  --app-container: #ffffff;
+  --app-subtle: #fafbfc;
+  --app-border: #e5e6eb;
+  --app-border-strong: #d9dce1;
+  --app-text-1: #1d2129;
+  --app-text-2: #4e5969;
+  --app-text-3: #86909c;
+  --app-text-4: #c9cdd4;
+
+  /* ============ 功能色 ============ */
+  --app-success: #0faf5f;
+  --app-success-bg: #e8f8ef;
+  --app-warning: #e37318;
+  --app-warning-bg: #fef3e6;
+  --app-danger: #d9372b;
+  --app-danger-bg: #fdecea;
+  --app-info: #4e5969;
+  --app-info-bg: #f2f3f5;
+
+  /* ============ 导航（飞书式双栏） ============ */
+  --app-nav-bg: #f6f7f9;
+  --app-nav-panel-bg: #ffffff;
+  --app-nav-text: #5f6b7a;
+  --app-nav-text-strong: #1d2129;
+  --app-nav-item-hover: #eef1f5;
+  --app-nav-active-bg: var(--app-primary);
+  --app-nav-divider: #e8ebf0;
+  --app-nav-rail-width: 72px;
+  --app-nav-panel-width: 208px;
+
+  /* ============ 圆角 ============ */
+  --app-radius-xs: 4px;
+  --app-radius-sm: 6px;
+  --app-radius-md: 8px;
+  --app-radius-lg: 12px;
+  --app-radius-round: 999px;
+
+  /* ============ 阴影 ============ */
+  --app-shadow-sm: 0 1px 2px rgb(29 33 41 / 6%);
+  --app-shadow-base: 0 2px 8px rgb(29 33 41 / 8%);
+  --app-shadow-lg: 0 8px 24px rgb(29 33 41 / 12%);
+
+  /* ============ 尺寸 ============ */
+  --app-navbar-height: 56px;
+  --app-tags-height: 40px;
+  --app-sidebar-width: calc(var(--app-nav-rail-width) + var(--app-nav-panel-width));
+  --app-sidebar-collapsed: var(--app-nav-rail-width);
+  --app-content-padding: 16px;
+  --app-card-padding: 20px;
+  --app-control-height: 32px;
+
+  /* ============ 字体 ============ */
+  --app-font-12: 12px;
+  --app-font-13: 13px;
+  --app-font-14: 14px;
+  --app-font-16: 16px;
+  --app-font-20: 20px;
+  --app-font-24: 24px;
+  --app-line-height: 22px;
+
+  /* ============ 动效 ============ */
+  --app-duration-fast: 160ms;
+  --app-duration-base: 200ms;
+  --app-ease: cubic-bezier(0.2, 0, 0, 1);
+}

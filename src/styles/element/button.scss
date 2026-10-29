@@ -1,0 +1,86 @@
+/**
+ * 按钮：高度 32 / 圆角 6 / 字重 500，去除默认阴影
+ */
+.el-button {
+  height: var(--app-control-height);
+  padding: 0 14px;
+  font-weight: 500;
+  border-radius: var(--app-radius-sm);
+  transition:
+    background-color var(--app-duration-fast) var(--app-ease),
+    border-color var(--app-duration-fast) var(--app-ease),
+    color var(--app-duration-fast) var(--app-ease);
+
+  & + .el-button {
+    margin-left: 8px;
+  }
+
+  .el-icon + span,
+  .el-icon + .el-button__text {
+    margin-left: 4px;
+  }
+
+  &.is-text,
+  &.is-link {
+    height: auto;
+    padding: 2px 4px;
+    font-weight: 400;
+
+    & + .el-button.is-text,
+    & + .el-button.is-link {
+      margin-left: 4px;
+    }
+  }
+}
+
+.el-button--small {
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--app-font-13);
+}
+
+.el-button--large {
+  height: 36px;
+  padding: 0 18px;
+}
+
+/* 主按钮：沉稳蓝，无拟物阴影 */
+.el-button--primary {
+  box-shadow: none;
+
+  &:hover,
+  &:focus {
+    box-shadow: none;
+  }
+}
+
+/* 默认按钮：白底细描边 */
+.el-button--default:not(.is-text):not(.is-link) {
+  border-color: var(--app-border);
+
+  &:hover {
+    color: var(--app-primary);
+    border-color: var(--app-primary-border);
+    background: var(--app-primary-bg);
+  }
+}
+
+/* 表格行内操作按钮：保持紧凑并弱化视觉权重 */
+.el-table .el-button.is-link {
+  padding: 0 4px;
+  font-size: var(--app-font-13);
+}
+
+.el-button.is-circle {
+  width: var(--app-control-height);
+  padding: 0;
+}
+
+.el-button-group .el-button + .el-button {
+  margin-left: 0;
+}
+
+/* 下拉触发按钮（表格操作列更多操作） */
+.el-dropdown .el-button.is-text {
+  color: var(--app-text-2);
+}

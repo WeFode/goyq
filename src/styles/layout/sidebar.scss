@@ -1,0 +1,269 @@
+/**
+ * 双栏导航（飞书式）
+ * 结构：左侧一级图标栏（rail） + 右侧二级菜单面板（panel）
+ * 折叠时仅保留 rail，图标始终可见
+ */
+.app-sidebar {
+  display: flex;
+  width: var(--app-sidebar-width);
+  height: 100%;
+  overflow: hidden;
+  background: var(--app-nav-panel-bg);
+  border-right: 1px solid var(--app-nav-divider);
+  transition: width var(--app-duration-base) var(--app-ease);
+
+  &.is-collapsed {
+    width: var(--app-sidebar-collapsed);
+  }
+}
+
+/* ============ 一级：图标栏 ============ */
+.app-nav-rail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--app-nav-rail-width);
+  background: var(--app-nav-bg);
+  border-right: 1px solid var(--app-nav-divider);
+
+  &__logo {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    height: var(--app-navbar-height);
+
+    img {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--app-radius-sm);
+    }
+  }
+
+  &__scroll {
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    width: calc(var(--app-nav-rail-width) - 16px);
+    padding: 8px 4px;
+    margin: 4px auto;
+    color: var(--app-nav-text);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    transition:
+      background-color var(--app-duration-fast) var(--app-ease),
+      color var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      color: var(--app-nav-text-strong);
+      background: var(--app-nav-item-hover);
+    }
+
+    &.is-active {
+      color: #fff;
+      background: var(--app-nav-active-bg);
+
+      .app-nav-rail__label {
+        color: #fff;
+      }
+    }
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+  }
+
+  &__initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgb(0 0 0 / 6%);
+    border-radius: 6px;
+  }
+
+  &__label {
+    display: -webkit-box;
+    width: 100%;
+    max-height: 26px;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 13px;
+    color: inherit;
+    text-align: center;
+    word-break: break-all;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  &__collapse {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    color: var(--app-nav-text);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--app-nav-divider);
+    transition: color var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      color: var(--app-primary);
+    }
+  }
+}
+
+/* ============ 二级：菜单面板 ============ */
+.app-nav-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--app-nav-panel-width);
+  min-width: 0;
+  overflow: hidden;
+  background: var(--app-nav-panel-bg);
+  transition:
+    width var(--app-duration-base) var(--app-ease),
+    opacity var(--app-duration-base) var(--app-ease);
+
+  .app-sidebar.is-collapsed & {
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__head {
+    display: flex;
+    flex-shrink: 0;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--app-navbar-height);
+    padding: 0 12px 0 14px;
+    border-bottom: 1px solid var(--app-nav-divider);
+  }
+
+  &__title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+    font-size: var(--app-font-15);
+    font-weight: 600;
+    color: var(--app-nav-text-strong);
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__collapse {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--app-nav-text);
+    cursor: pointer;
+    background: var(--app-nav-panel-bg);
+    border: 1px solid var(--app-nav-divider);
+    border-radius: 50%;
+    transition:
+      color var(--app-duration-fast) var(--app-ease),
+      border-color var(--app-duration-fast) var(--app-ease);
+
+    &:hover {
+      color: var(--app-primary);
+      border-color: var(--app-primary-border);
+    }
+  }
+
+  &__scroll {
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 10px 16px;
+  }
+
+  &__group {
+    padding: 10px 12px 4px;
+    font-size: var(--app-font-12);
+    color: var(--app-text-4);
+  }
+
+  &__item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    font-size: var(--app-font-13);
+    color: var(--app-nav-text);
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    transition:
+      background-color var(--app-duration-fast) var(--app-ease),
+      color var(--app-duration-fast) var(--app-ease);
+
+    span {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &:hover {
+      color: var(--app-nav-text-strong);
+      background: var(--app-nav-item-hover);
+    }
+
+    &.is-active {
+      font-weight: 500;
+      color: #fff;
+      background: var(--app-nav-active-bg);
+    }
+  }
+
+  &__empty {
+    padding: 24px 16px;
+    font-size: var(--app-font-13);
+    color: var(--app-text-4);
+    text-align: center;
+  }
+}
+
+@media (width <= 768px) {
+  .app-nav-panel {
+    width: 180px;
+  }
+}
