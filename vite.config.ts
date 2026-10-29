@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // 业务接口
         "/api/v1": {
-          target: env.VITE_PROXY_TARGET || "http://1.95.208.188:6886",
+          target: env.VITE_PROXY_TARGET || "",
           changeOrigin: true,
           secure: false,
           ws: true
@@ -33,16 +33,16 @@ export default defineConfig(({ mode }) => {
         },
         // 附件（后端 serverRoot=resource，/files/xxx 直接映射 resource/files/xxx）
         "/files": {
-          target: env.VITE_FILE_PROXY_TARGET || "http://192.168.3.54:8080",
+          target: env.VITE_FILE_PROXY_TARGET || "",
           changeOrigin: true
         },
         // 接口文档（Swagger UI）
         "/swagger": {
-          target: env.VITE_PROXY_TARGET || "http://1.95.208.188:6886",
+          target: env.VITE_PROXY_TARGET || "",
           changeOrigin: true
         },
         "/api.json": {
-          target: env.VITE_PROXY_TARGET || "http://1.95.208.188:6886",
+          target: env.VITE_PROXY_TARGET || "",
           changeOrigin: true
         }
       }
