@@ -25,8 +25,10 @@ const ruleFormRef = ref<FormInstance>();
 const applyFormRef = ref<FormInstance>();
 
 const REMEMBER_PASSWORD_KEY = "loginRememberPassword";
+const TENANT_CODE_KEY = "loginTenantCode";
 
 const ruleForm = reactive({
+  tenantCode: "",
   username: "",
   password: ""
 });
@@ -139,6 +141,7 @@ async function onLogin(formEl?: FormInstance) {
 
     userStore
       .loginByUsername({
+        tenantCode: ruleForm.tenantCode || undefined,
         username: ruleForm.username,
         password: ruleForm.password
       })
@@ -149,6 +152,7 @@ async function onLogin(formEl?: FormInstance) {
         }
 
         saveRememberedPassword();
+        localStorage.setItem(TENANT_CODE_KEY, ruleForm.tenantCode || "");
 
         return initRouter()
           .then(() => new Promise(resolve => setTimeout(resolve, 200)))
@@ -224,6 +228,7 @@ function onkeypress(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  ruleForm.tenantCode = localStorage.getItem(TENANT_CODE_KEY) || "";
   loadRememberedPassword();
   window.document.addEventListener("keypress", onkeypress);
 });
@@ -342,6 +347,18 @@ onBeforeUnmount(() => {
           hide-required-asterisk
           @submit.prevent="onLogin(ruleFormRef)"
         >
+          <el-form-item label="企业编码" prop="tenantCode">
+            <el-input
+              v-model="ruleForm.tenantCode"
+              placeholder="默认 default，可留空"
+              clearable
+            >
+              <template #prefix>
+                <AppIcon icon="ep:office-building" :size="15" />
+              </template>
+            </el-input>
+          </el-form-item>
+
           <el-form-item label="账号" prop="username">
             <el-input
               v-model="ruleForm.username"

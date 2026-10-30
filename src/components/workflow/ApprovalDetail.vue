@@ -408,7 +408,9 @@ watch(
         </AppDetailSection>
 
         <AppDetailSection title="评论记录">
+          <!-- 详情首帧尚未加载完成时不挂载，避免子组件收到 undefined 的必填 props -->
           <ApprovalComments
+            v-if="detail.id"
             :instance-id="detail.id"
             :history="detail.history"
             @success="$emit('refresh')"

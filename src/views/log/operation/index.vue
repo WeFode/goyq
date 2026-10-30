@@ -7,6 +7,7 @@ import {
 } from "@/api/logOperation";
 import { hasAuth } from "@/router/utils";
 import { message } from "@/utils/message";
+import { downloadExcel } from "@/utils/export";
 
 defineOptions({ name: "SystemOperationLog" });
 
@@ -89,6 +90,27 @@ async function handleBatchDelete() {
   }
 }
 
+const exporting = ref(false);
+
+/** 按当前筛选条件导出，与列表保持同一口径 */
+async function handleExport() {
+  exporting.value = true;
+  try {
+    await downloadExcel(
+      "export/operation-logs",
+      {
+        module: query.module || undefined,
+        keyword: query.username || undefined,
+        startAt: query.dateRange?.[0] || undefined,
+        endAt: query.dateRange?.[1] || undefined
+      },
+      "操作日志.xlsx"
+    );
+  } finally {
+    exporting.value = false;
+  }
+}
+
 const formatTime = (value: any) => {
   if (!value) return "-";
   const date = dayjs(value);
@@ -105,6 +127,17 @@ onMounted(load);
 
 <template>
   <AppPage title="操作日志" description="记录关键业务操作，用于审计与问题追溯">
+    <template #actions>
+      <el-button
+        v-if="hasAuth('system:operation:export')"
+        :loading="exporting"
+        @click="handleExport"
+      >
+        <AppIcon icon="ep:download" :size="14" />
+        导出 Excel
+      </el-button>
+    </template>
+
     <AppSearchBar :loading="loading" @search="search" @reset="resetQuery">
       <el-form-item label="操作人">
         <el-input v-model="query.username" placeholder="请输入操作人" clearable />

@@ -9,6 +9,18 @@ export const REGEXP_PHONE = /^1[3-9]\d{9}$/;
 
 /** 登录校验 */
 const loginRules = reactive(<FormRules>{
+  tenantCode: [
+    {
+      validator: (_rule, value, callback) => {
+        if (value && !/^[a-zA-Z0-9-]{0,32}$/.test(value)) {
+          callback(new Error("企业编码格式不正确"));
+        } else {
+          callback();
+        }
+      },
+      trigger: "blur"
+    }
+  ],
   username: [
     { required: true, message: "请输入账号", trigger: "blur" }
   ],

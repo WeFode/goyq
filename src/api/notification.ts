@@ -51,7 +51,10 @@ export function markAllNotificationsRead() {
 }
 
 
-/** 管理员勾选部门发布公告 */
+/** 管理员勾选部门发布公告
+ * @deprecated 请使用 @/api/announcement 的 publishAnnouncement，
+ * 新接口会落公告主体，支持列表、送达统计与撤回。
+ */
 export function publishAnnouncement(data: any) {
   return http.post("/notification/announcement", {data});
 }

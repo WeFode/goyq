@@ -1,3 +1,5 @@
+import { getToken } from "@/utils/auth"
+
 /**
  * 将 UUID 格式化为钉钉风格的审批编号（仅展示用，不影响实际 ID）
  * 格式：YYYYMMDDHHmm + 9 位数字后缀，示例：202605181405000428762
@@ -59,14 +61,38 @@ export const groupOptions = [
 export { WORKFLOW_STATUS as statusConfig } from './dicts'
 const baseUrl = (import.meta.env.VITE_FILE_BASE_URL || '').replace(/\/$/, '')
 
+/**
+ * 附件访问地址解析
+ *
+ * 后端已将附件地址改为带时效的签名接口（/api/v1/common/file/{id}/raw?expire=&sign=），
+ * 同时 /files 静态目录不再对外免登录开放，因此：
+ *  - 新式接口地址：保留前导斜杠，交由同源代理访问
+ *  - 存量静态路径：归一化为绝对路径并附带 token，保证已登录用户旧附件仍可打开
+ *  - 已经是 http(s) 绝对地址（线上旧数据）：原样返回
+ */
 export const getAttachmentUrl = (file: any) => {
     const rawUrl: string = file?.fileUrl || file?.url || ''
     if (!rawUrl) return ''
     if (/^(https?:)?\/\//.test(rawUrl) || rawUrl.startsWith('data:') || rawUrl.startsWith('blob:')) {
         return rawUrl
     }
-    const normalized = rawUrl.startsWith('/') ? rawUrl.slice(1) : rawUrl
-    return baseUrl ? `${baseUrl}/${normalized}` : normalized
+
+    // 接口型地址（包含 /api/）必须保留前导斜杠，否则会被当成路由子路径
+    if (rawUrl.startsWith('/api/')) {
+        return baseUrl ? `${baseUrl}${rawUrl}` : rawUrl
+    }
+
+    const normalized = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`
+    const withToken = appendAccessToken(normalized)
+    return baseUrl ? `${baseUrl}${withToken}` : withToken
+}
+
+/** 为存量静态附件路径附加访问令牌（<img src> 无法携带 Authorization 头） */
+function appendAccessToken(path: string): string {
+    const token = getToken()?.accessToken
+    if (!token || !path.startsWith('/files/')) return path
+    const separator = path.includes('?') ? '&' : '?'
+    return `${path}${separator}token=${encodeURIComponent(token)}`
 }
 
 /** 取文件后缀（小写，不含点） */

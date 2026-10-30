@@ -13,6 +13,7 @@ import { positionListQuery } from "@/api/position";
 import { hasAuth } from "@/router/utils";
 import { message } from "@/utils/message";
 import { useTable } from "@/composables/useTable";
+import { downloadExcel } from "@/utils/export";
 
 defineOptions({ name: "EMPLOYEE" });
 
@@ -31,6 +32,26 @@ const { loading, list, pagination, search, refresh, reset } = useTable({
   fetcher: params => employeeListQuery(params),
   query
 });
+
+const exporting = ref(false);
+
+/** 按当前筛选条件导出员工花名册 */
+async function handleExport() {
+  exporting.value = true;
+  try {
+    await downloadExcel(
+      "export/hr-employees",
+      {
+        keyword: query.employeeName || undefined,
+        departmentId: query.departmentId || undefined,
+        employmentStatus: query.employmentStatus ?? undefined
+      },
+      "员工花名册.xlsx"
+    );
+  } finally {
+    exporting.value = false;
+  }
+}
 
 /* ============ 字典 ============ */
 const deptTree = ref<any[]>([]);
@@ -262,6 +283,14 @@ onMounted(async () => {
   <AppPage title="员工管理" description="维护员工档案、组织归属与登录账号">
     <template #actions>
       <el-button
+        v-if="hasAuth('hr:employee:export')"
+        :loading="exporting"
+        @click="handleExport"
+      >
+        <AppIcon icon="ep:download" :size="14" />
+        导出 Excel
+      </el-button>
+      <el-button
         v-if="hasAuth('hr:employee:add')"
         type="primary"
         @click="openCreate"
@@ -283,6 +312,7 @@ onMounted(async () => {
         <el-tree-select
           v-model="query.departmentId"
           :data="deptTree"
+          node-key="id"
           :props="{ label: 'deptName', children: 'children', value: 'id' }"
           placeholder="全部部门"
           clearable
@@ -422,6 +452,7 @@ onMounted(async () => {
               <el-tree-select
                 v-model="form.primaryDeptId"
                 :data="deptTree"
+                node-key="id"
                 :props="{ label: 'deptName', children: 'children', value: 'id' }"
                 placeholder="请选择主部门"
                 check-strictly
@@ -434,6 +465,7 @@ onMounted(async () => {
               <el-tree-select
                 v-model="form.extraDeptIds"
                 :data="deptTree"
+                node-key="id"
                 :props="{ label: 'deptName', children: 'children', value: 'id' }"
                 placeholder="可多选"
                 check-strictly

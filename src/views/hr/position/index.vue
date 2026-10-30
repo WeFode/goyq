@@ -107,7 +107,7 @@ onMounted(() => search());
   <AppPage title="职位管理" description="维护公司职位字典，供员工档案选择">
     <template #actions>
       <el-button
-        v-if="hasAuth('hr:position:add')"
+        v-if="hasAuth('hr:post:add')"
         type="primary"
         @click="openCreate"
       >
@@ -163,7 +163,7 @@ onMounted(() => search());
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button
-            v-if="hasAuth('hr:position:edit')"
+            v-if="hasAuth('hr:post:edit')"
             link
             type="primary"
             @click="openEdit(row)"
@@ -171,7 +171,7 @@ onMounted(() => search());
             编辑
           </el-button>
           <el-popconfirm
-            v-if="hasAuth('hr:position:delete')"
+            v-if="hasAuth('hr:post:delete')"
             :title="`确认删除职位「${row.positionName}」？`"
             width="220"
             @confirm="handleDelete(row)"

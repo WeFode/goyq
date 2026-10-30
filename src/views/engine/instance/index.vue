@@ -19,6 +19,8 @@ import {
 } from "@/api/workflow";
 import { getFormList } from "@/api/form";
 import { useUserStoreHook } from "@/store/modules/user";
+import { hasAuth } from "@/router/utils";
+import { downloadExcel } from "@/utils/export";
 import { message } from "@/utils/message";
 import { emitter } from "@/utils/mitt";
 import { statusConfig } from "@/utils/workflow";
@@ -48,6 +50,25 @@ const tabs: Array<{ key: TabKey; label: string }> = [
 
 const activeTab = ref<TabKey>("initiated");
 const isCcTab = computed(() => activeTab.value === "cc");
+
+const exporting = ref(false);
+
+/** 导出当前 Tab 视角的审批实例；“我发起的” Tab 仅导出本人发起的数据 */
+async function handleExport() {
+  exporting.value = true;
+  try {
+    await downloadExcel(
+      "export/workflow-instances",
+      {
+        keyword: filters[activeTab.value]?.keyword || undefined,
+        mine: activeTab.value === "initiated" ? true : undefined
+      },
+      "审批实例.xlsx"
+    );
+  } finally {
+    exporting.value = false;
+  }
+}
 
 /* ============ 列表数据 ============ */
 const loading = ref(false);
@@ -204,6 +225,14 @@ function handleTabChange(key: string) {
   activeTab.value = key as TabKey;
   pagination[key as TabKey].currentPage = 1;
   loadList(key as TabKey);
+}
+
+/** 翻页：先把新页码写回当前 Tab，再按该页加载列表 */
+function handlePageChange(page: number) {
+  const key = activeTab.value;
+  if (pagination[key].currentPage === page) return;
+  pagination[key].currentPage = page;
+  loadList(key);
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -643,6 +672,14 @@ function openFullDetail(row: any) {
 <template>
   <AppPage title="审批中心" description="处理待办、跟踪流程进展与发起新审批">
     <template #actions>
+      <el-button
+        v-if="!isCcTab && hasAuth('engine:instance:export')"
+        :loading="exporting"
+        @click="handleExport"
+      >
+        <AppIcon icon="ep:download" :size="14" />
+        导出 Excel
+      </el-button>
       <el-button type="primary" @click="workflowSelectVisible = true">
         <AppIcon icon="ep:plus" :size="14" />
         发起审批
@@ -846,13 +883,13 @@ function openFullDetail(row: any) {
 
           <div v-if="pagination[activeTab].total > 0" class="approval-inbox__pager">
             <el-pagination
-              small
+              size="small"
               background
               layout="prev, pager, next"
               :current-page="currentPage"
               :page-size="pagination[activeTab].pageSize"
               :total="pagination[activeTab].total"
-              @current-change="loadList()"
+              @current-change="handlePageChange"
             />
           </div>
         </aside>

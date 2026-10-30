@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { useUserStoreHook } from "@/store/modules/user";
 import { getEmployee, updateEmployeeProfile } from "@/api/employee";
+import { uploadFile } from "@/api/common";
 import { message } from "@/utils/message";
 
 defineOptions({ name: "ProfileIndex" });
@@ -53,6 +54,14 @@ const infoForm = reactive({
 });
 const infoSaving = ref(false);
 
+/**
+ * 头像：库内只存 fileId（后端会归一化），展示用后端下发的签名地址。
+ * 这里分开两个状态，避免把带时效的签名地址又写回数据库。
+ */
+const avatarFileId = ref("");
+const avatarPreview = ref("");
+const avatarUploading = ref(false);
+
 const infoRules: FormRules = {
   employeeName: [
     { required: true, message: "请填写姓名", trigger: "blur" },
@@ -73,7 +82,46 @@ function syncForm() {
   infoForm.workMobile = row.workMobile ?? "";
   infoForm.address = row.address ?? "";
   infoForm.gender = row.gender ?? 1;
-  infoForm.avatar = row.avatar ?? userStore.avatar ?? "";
+  // 未重新上传时提交值留空（后端只在有值时才更新头像）
+  avatarFileId.value = "";
+  avatarPreview.value = row.avatar ?? userStore.avatar ?? "";
+}
+
+/** 选择本地图片 → 上传 → 记下 fileId，保存资料时一并提交 */
+async function handleAvatarPick(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    message("请选择图片文件", { type: "warning" });
+    input.value = "";
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    message("头像大小不能超过 2MB", { type: "warning" });
+    input.value = "";
+    return;
+  }
+
+  avatarUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("businessType", "avatar");
+    const res: any = await uploadFile(formData);
+    const info = res?.data?.file;
+    if (info?.id) {
+      avatarFileId.value = info.id;
+      avatarPreview.value = info.fileUrl ?? "";
+      message("头像已上传，点击保存资料后生效", { type: "success" });
+    }
+  } catch (error) {
+    console.error("[profile] 头像上传失败:", error);
+  } finally {
+    avatarUploading.value = false;
+    input.value = "";
+  }
 }
 
 async function saveInfo() {
@@ -88,11 +136,14 @@ async function saveInfo() {
         workMobile: infoForm.workMobile,
         address: infoForm.address,
         gender: infoForm.gender,
-        avatar: infoForm.avatar
+        // 仅在上传了新头像时提交 fileId；undefined 不会覆盖已有头像
+        avatar: avatarFileId.value || undefined
       });
       message("资料已更新", { type: "success" });
       userStore.SET_NICKNAME(infoForm.employeeName);
-      userStore.SET_AVATAR(infoForm.avatar);
+      if (avatarFileId.value) {
+        userStore.SET_AVATAR(avatarPreview.value);
+      }
       loadEmployee();
     } catch (error: any) {
       // 错误提示由 http 层统一弹出，避免重复提示
@@ -179,7 +230,7 @@ onMounted(loadEmployee);
       <aside class="profile__card">
         <AppUserAvatar
           :name="nickname"
-          :avatar="infoForm.avatar"
+          :avatar="avatarPreview"
           :size="72"
         />
         <h3 class="profile__name">{{ nickname }}</h3>
@@ -237,8 +288,26 @@ onMounted(loadEmployee);
                   placeholder="请输入家庭住址"
                 />
               </el-form-item>
-              <el-form-item label="头像地址" prop="avatar">
-                <el-input v-model="infoForm.avatar" placeholder="头像图片地址，留空使用姓名首字" clearable />
+              <el-form-item label="头像">
+                <div class="profile__avatar-edit">
+                  <AppUserAvatar
+                    :name="infoForm.employeeName || nickname"
+                    :avatar="avatarPreview"
+                    :size="52"
+                  />
+                  <label class="profile__avatar-pick">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      @change="handleAvatarPick"
+                    />
+                    {{ avatarUploading ? "上传中…" : "更换头像" }}
+                  </label>
+                  <span class="profile__avatar-hint">
+                    jpg/png，不超过 2MB；未上传时使用姓名首字
+                  </span>
+                </div>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="infoSaving" @click="saveInfo">
@@ -311,6 +380,35 @@ onMounted(loadEmployee);
   display: flex;
   gap: 16px;
   align-items: flex-start;
+
+  &__avatar-edit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
+  &__avatar-pick {
+    padding: 0 12px;
+    font-size: var(--app-font-13);
+    line-height: 30px;
+    color: var(--app-primary);
+    cursor: pointer;
+    background: var(--app-primary-bg);
+    border: 1px solid var(--app-primary-border);
+    border-radius: var(--app-radius-sm);
+    transition: background 160ms ease, color 160ms ease;
+
+    &:hover {
+      color: #fff;
+      background: var(--app-primary);
+    }
+  }
+
+  &__avatar-hint {
+    font-size: var(--app-font-12);
+    color: var(--app-text-3);
+  }
 
   &__card {
     display: flex;

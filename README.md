@@ -1,12 +1,13 @@
 # GO云启 OA · 协同办公前端
 
-面向政企/中小团队的协同办公前端，基于 **Vue 3 + Vite + Element Plus** 二次定制，覆盖工作台看板、审批工作流、流程/表单设计器、组织人事、系统权限与审计日志。
+面向政企/中小团队的协同办公前端，基于 **Vue 3 + Vite + Element Plus** 二次定制，覆盖工作台看板、审批工作流、流程/表单设计器、组织人事、系统权限、数据字典、系统参数、租户运营、公告管理与审计日志。
 
 - 设计语言：飞书式交互 + 政企配色，双栏导航（一级图标栏 + 二级菜单面板）
 - 多标签页、动态路由、按钮级权限、状态字典全量中文化
 - 复杂审批：串行 / 会签 / 或签 / 条件分支 / 抄送 / 附件
+- 面向 SaaS：租户用量与账号配额可视化，平台管理员可切换租户视角
 
-> **说明**：本仓库**只包含前端**。后端服务（GoFrame + PostgreSQL）不随仓库提供，接口契约见 [后端对接](#后端对接)。截图数据来自本地演示环境。
+> **说明**：本仓库**只包含前端**。后端服务不随仓库提供，前端只依赖稳定的 HTTP 契约，见 [后端对接](#后端对接)。截图数据来自本地演示环境。
 
 ![工作台](docs/screenshots/01-dashboard.png)
 
@@ -22,6 +23,7 @@
 - [后端对接](#后端对接)
 - [设计系统](#设计系统)
 - [工程约定](#工程约定)
+- [权限码对照](#权限码对照)
 - [部署](#部署)
 - [常见问题](#常见问题)
 - [License](#license)
@@ -71,7 +73,14 @@
 **系统与组织**
 - 系统管理：用户、角色（菜单授权 / 权限授权）、菜单（树形）、权限、日志（登录 / 操作）
 - 人事：部门组织树、职位、邀请码、员工档案、通讯录
-- 账号安全：登录会话控制、个人资料、修改密码
+- 账号安全：登录会话控制、个人资料、头像上传、修改密码
+
+**平台能力**
+- 数据字典：左列表右字典项，内置枚举只读、业务字典可视化维护；`useDict(code)` 供页面按编码取用
+- 系统参数：按分组维护站点信息、安全策略、附件限制与审批规则，支持整组批量保存
+- 租户运营：租户列表 / 开通 / 编辑 / 切换租户视角，用量抽屉展示账号配额与存储占用
+- 公告管理：部门树多选发布、送达与已读统计、撤回（联动清理已下发通知）、详情抽屉
+- 数据导出：审批实例、登录日志、操作日志、员工花名册，按当前筛选条件导出 Excel
 
 **交互与工程**
 - 动态路由（后端菜单驱动）、多标签页（右键菜单）、面包屑、全局搜索（Ctrl K）、消息中心
@@ -116,10 +125,10 @@ pnpm preview    # 预览构建产物
 | 变量 | 说明 | 本地示例 |
 | --- | --- | --- |
 | `VITE_PORT` | 开发端口 | `8849` |
-| `VITE_PROXY_TARGET` | 业务接口代理目标 | `http://127.0.0.1:8000` |
-| `VITE_FILE_PROXY_TARGET` | 附件代理目标（`/files`） | `http://127.0.0.1:8000` |
+| `VITE_PROXY_TARGET` | 业务接口代理目标（含附件与导出） | `http://127.0.0.1:8000` |
+| `VITE_FILE_PROXY_TARGET` | 附件代理目标（仅老后端仍用 `/files` 时保留） | `http://127.0.0.1:8000` |
 | `VITE_WS_PROXY_TARGET` | WebSocket 代理目标 | `ws://127.0.0.1:8000` |
-| `VITE_FILE_BASE_URL` | 附件域名前缀，留空表示同源 | 空 |
+| `VITE_FILE_BASE_URL` | 附件额外域名前缀，**新后端建议留空**（附件与接口同源） | 空 |
 | `VITE_ROUTER_HISTORY` | 路由模式（`h5` / `hash`） | `h5` |
 | `VITE_PUBLIC_PATH` | 部署公共路径 | `/` |
 
@@ -140,13 +149,18 @@ new-web
 │  │  ├─ app/                 # App* 基础组件（页面容器/表格/表单弹窗/状态标签…）
 │  │  ├─ charts/              # SVG 图表（趋势/环形/条形）
 │  │  └─ workflow/            # 审批领域组件（详情/时间轴/表单渲染/附件…）
+│  ├─ composables/            # useTable（列表分页）/ usePermission
 │  ├─ directives/             # v-auth / v-perms / v-copy
 │  ├─ layout/                 # 布局：双栏导航、导航栏、多标签、主区域
 │  ├─ router/                 # 静态路由 + 后端菜单转动态路由
 │  ├─ store/                  # app / user / permission / multiTags / settings
 │  ├─ styles/                 # 设计令牌、Element Plus 覆盖、布局与工具类
-│  ├─ utils/                  # http、字典、存储、workflow、helpers…
+│  ├─ utils/                  # http、dicts/dictStore、export、workflow、storage…
 │  └─ views/                  # 页面（路径与后端菜单 component 一一对应）
+│     ├─ system/              # user / role / menu / permission / dict / config / tenant / announcement
+│     ├─ engine/              # workflow / instance / designer / form
+│     ├─ hr/                  # dept / position / employee / invite / contacts
+│     └─ log/                 # login / operation
 ├─ nginx.conf                 # 生产部署参考
 ├─ doc.md                     # 开发记录与验收说明
 └─ vite.config.ts
@@ -193,9 +207,56 @@ new-web
 - 实例状态仅 `running / approved / rejected / cancelled`
 - 节点级"部分完成"由任务状态表达，不要新增实例状态
 
+### 平台能力
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/sys/dict/list` | 字典列表（`data.{ list, total }`） |
+| GET | `/sys/dict/items?dictCode=` | 按编码取字典项（`data.{ dictCode, dictName, items }`） |
+| GET | `/sys/dict/options?codes=a,b` | 批量取多项（`data.dicts[code] = items`） |
+| POST / PUT / DELETE | `/sys/dict`、`/sys/dict/{id}` | 字典增删改（内置字典不可删） |
+| POST / PUT / DELETE | `/sys/dict/item`、`/sys/dict/item/{id}` | 字典项增删改 |
+| GET | `/sys/config/groups` | 参数分组（`data.groups[].{ code, name, count }`） |
+| GET | `/sys/config/list?group=` | 分组下的参数列表 |
+| POST | `/sys/config/batch` | 批量保存：`{ group, items: [{ configKey, configValue }] }` |
+| GET | `/sys/config/public` | 无需管理权限的公开参数（站点名称、客服电话等） |
+| GET | `/announcement/list` | 公告列表（含 `deptNames`、`targetCount`、`readCount`） |
+| POST | `/announcement` | 发布公告：`{ title, content, deptIds }`，后端递归下发子部门 |
+| POST | `/announcement/{id}/withdraw` | 撤回并清理已下发通知 |
+| DELETE | `/announcement/{id}` | 删除（仅已撤回） |
+| GET | `/sys/tenant/current` | 当前租户 |
+| GET | `/sys/tenant/list` | 租户列表（平台管理员） |
+| POST | `/sys/tenant` | 开通租户：租户 + 根部门 + 管理员账号 |
+| PUT | `/sys/tenant/{id}` | 编辑租户（停用会作废该租户会话） |
+| POST | `/sys/tenant/{id}/switch` | 切换租户视角（返回新 token，前端需重新登录态） |
+| GET | `/sys/tenant/usage` | 用量与配额（不传 `tenantId` 即当前租户） |
+
+### 数据导出
+
+导出接口直接返回 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` 文件流，
+**经过统一 http 封装会被当成 JSON 解包**，因此 `utils/export.ts` 使用独立 axios 实例请求，
+并从 `Content-Disposition` 解析文件名（优先 `filename*=UTF-8''`）。
+
+| 路径 | 说明 |
+| --- | --- |
+| `GET /export/workflow-instances` | 审批实例（支持 `status / keyword / mine / startAt / endAt`） |
+| `GET /export/operation-logs` | 操作日志 |
+| `GET /export/login-logs` | 登录日志 |
+| `GET /export/hr-employees` | 员工花名册 |
+
 ### 附件
 
-上传接口返回 `{ fileUrl }`，形如 `/files/20251103/xxx.pdf`；前端统一经 `VITE_FILE_BASE_URL + fileUrl` 访问。生产环境需保证 `/files` 与 `/api/v1` 指向同一后端。
+上传 `POST /common/file/upload` 返回 `data.file.{ id, fileName, fileUrl, fileSize, fileType }`。
+
+**访问约定（重要）**：
+
+1. `fileUrl` 是**带时效的签名地址**，形如 `/api/v1/common/file/{fileId}/raw?expire=1700000000&sign=...`，
+   有效期由后端配置（默认 15 分钟）。可以直接用于 `<img src>` 或新窗口打开，无需额外携带 token。
+2. **不要把 `fileUrl` 写进业务数据**（头像、表单字段、评论附件等）。需要长期引用时保存 `fileId`，
+   展示前调用 `GET /common/file/{id}` 换取新的签名地址；审批详情与各列表接口已由后端自动完成重写，
+   前端通常拿到的就是可用的签名地址。
+3. 旧版 `/files/日期/文件名` 静态路径已关闭，未签名访问会被拒绝（401/403）。
+4. 签名地址可被验证但不可伪造：缺参数、篡改 `sign`、超出 `expire` 均会返回业务错误。
 
 ---
 
@@ -212,9 +273,44 @@ new-web
 
 1. `views/` 路径与后端菜单 `component` 保持 1:1，避免动态路由失效。
 2. 路由 `name` 与页面组件 `name` 必须一致，否则多标签缓存（keep-alive）失效。
-3. 接口统一走 `src/api/*`，不要在页面里裸写 axios 路径。
-4. 状态/枚举统一在 `src/utils/dicts.ts` 维护，禁止把后端英文码直接渲染。
-5. 新增页面优先复用 `AppPage`、`AppSearchBar`、`AppDataTable`、`AppFormDialog`。
+3. 接口统一走 `src/api/*`，不要在页面里裸写 axios 路径（导出例外，见 `utils/export.ts`）。
+4. 状态/枚举统一在 `src/utils/dicts.ts` 维护，禁止把后端英文码直接渲染；业务枚举用 `useDict(code)`。
+5. 新增页面优先复用 `AppPage`、`AppSearchBar`、`AppDataTable`、`AppFormDialog`、`AppFormDrawer`。
+6. **树形选择必须设置 `node-key`**：`el-tree-select` 开启 `show-checkbox` 后，勾选值的收集依赖 `node-key`，
+   缺失时 `v-model` 会拿到 `[null]`（表现为标签空白、提交后提示未选择）。同理 `el-tree` 取值也要设。
+7. **文件类字段不落库访问地址**：头像、附件一律存 `fileId`，展示时用接口返回的签名地址，
+   否则签名过期后图片/附件必然失效。
+8. **权限码必须与后端权限目录一致**：`hasAuth('xxx')` 里的码写错不会报错，只会让按钮永远不显示，
+   新增/改名时请同步核对（超管因 `*:*:*` 不受影响，容易漏测）。
+9. 前端隐藏按钮不等于授权：高风险操作（改系统参数、删日志、批量导出、发公告）后端同样会校验权限码，
+   前端只需保证体验一致，不要把权限当成安全边界。
+
+---
+
+## 权限码对照
+
+按钮权限码由后端权限目录下发，前端仅做展示控制；**写错不会报错，只会让按钮永久隐藏**。
+非超管账号的可见性完全取决于角色是否勾选了对应权限。
+
+| 模块 | 编码 |
+| --- | --- |
+| 账号 | `sys:user:add` / `edit` / `delete` / `resetPwd` / `assignRole` / `status` / `superSwitch` |
+| 角色 | `sys:role:add` / `edit` / `delete` / `assignMenu` / `assignPermission` |
+| 菜单 / 权限 | `sys:menu:add` / `edit` / `delete`、`sys:permission:add` / `edit` / `delete` |
+| 字典 | `sys:dict:add` / `edit` / `delete` |
+| 系统参数 | `sys:config:add` / `edit` / `delete` |
+| 租户 | `sys:tenant:add` / `edit` / `switch` |
+| 公告 | `sys:announcement:publish` / `withdraw` / `delete` |
+| 流程 / 表单 | `engine:workflow:add` / `edit` / `delete`、`engine:form:add` / `edit` / `delete` |
+| 部门 | `hr:dept:add` / `edit` / `delete` |
+| 职位 | `hr:post:add` / `edit` / `delete` |
+| 员工 | `hr:employee:add` / `edit` / `delete` / `account`（分配账号） |
+| 邀请码 | `hr:invite:add` / `edit` / `delete` |
+| 日志 | `system:login:delete`、`system:operation:delete` |
+| 导出 | `engine:instance:export`、`system:login:export`、`system:operation:export`、`hr:employee:export` |
+
+超管拥有 `*:*:*` 时前端 `hasAuth` 直接放行，因此**用超管账号测不出权限码写错**，
+排查非超管账号看不到按钮时，首先比对这里的编码与后端权限目录是否一致。
 
 ---
 
@@ -225,7 +321,11 @@ pnpm build
 # 将 dist/ 上传到服务器目录，参考 nginx.conf
 ```
 
-`nginx.conf` 已包含：SPA 回退、`index.html` 不缓存、`/static` 强缓存、`/api/v1`、`/files`、`/swagger`、`/api.json` 与 WebSocket 代理、gzip。
+`nginx.conf` 已包含：SPA 回退、`index.html` 不缓存、`/static` 强缓存、`/api/v1`、`/swagger`、`/api.json` 与 WebSocket 代理、gzip。
+
+要点：附件与导出均走 `/api/v1`，**不再依赖 `/files` 静态目录**；若对接的是旧版后端，
+才需要额外保留 `/files` 代理。静态资源缓存建议使用 `Cache-Control: private`，
+避免共享缓存保留他人附件。
 
 ---
 
@@ -238,7 +338,14 @@ pnpm build
 确认路由 `name` 与组件 `name` 一致；不一致时 keep-alive 无法命中。
 
 **附件打不开？**
-确认 `VITE_FILE_BASE_URL` 为空（同源）或指向附件服务域名，并确保反向代理未重写 `/files` 前缀。
+1. 确认使用的是接口下发的 `fileUrl`（签名地址 `/api/v1/common/file/{id}/raw?...`），而不是历史的 `/files/...` 路径；
+   旧静态路径已关闭，未签名访问会被拒绝。
+2. 签名默认 15 分钟过期，长时间停留在页面上再次点击附件可能失效，刷新页面即可重新获取。
+3. 二次开发时不要把 `fileUrl` 存入数据库（包括头像、表单字段），应存 `fileId`，否则过期后必然破图。
+
+**非超管账号看不到某个按钮？**
+先比对 [权限码对照](#权限码对照) 里的编码与后端权限目录是否一致，再看角色是否勾选了该权限。
+编码写错时接口与页面都不会报错，只是永远不显示。
 
 **接口返回 401 后整页退出？**
 http 层对 401 统一清理会话；检查 token 是否过期、后端会话是否被其他设备顶替（并发会话限制）。

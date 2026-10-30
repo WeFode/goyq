@@ -103,6 +103,46 @@ src/
 - **第五轮（已完成）**：流程/表单复杂度、附件与抄送、审批中心收件箱式重构、审批详情增强
 - **第六轮（已完成）**：双栏导航重构（飞书式）、折叠图标常显、开源 README + 截图
 - **第七轮（已完成）**：登录页按原型重做（主视觉 / 卡片 / 帮助弹窗 / 移动端）
+- **第八轮（已完成）**：平台能力补齐——数据字典、系统参数、租户运营台、公告管理、Excel 导出
+  - 字典管理 `system/dict`：由占位页重写为「左侧字典列表 + 右侧字典项」，支持色调/排序/启停；内置枚举带「内置」标记且禁止删除，`utils/dicts.ts` 保留为系统枚举兼底，业务枚举走 `useDict(code)`
+  - 系统参数 `system/config`（新增）：分组表单，按 `valueType` 渲染 input/number/switch/textarea，整组批量保存
+  - 租户管理 `system/tenant`（新增）：对接已有五个租户接口，含开通、编辑、切换租户（重签 token 后整页刷新）
+  - 公告管理 `system/announcement`（新增）：部门树多选发布、送达/已读统计、撤回、详情抽屉
+  - 导出 `utils/export.ts`（新增）：用独立 axios 实例取 blob（统一 http 封装会按 code 解包、无法承载二进制），已接入审批中心、登录日志、操作日志、员工管理四处
+  - 新增依赖：无（图表与导出均不引入前端重型依赖，导出由后端 excelize 生成）
+- **第八轮补充（安全加固与修复）**：
+  - 修复审批中心分页不可用：分页器用的是单向 `:current-page`，而 `@current-change="loadList()"` 并未回写页码，
+    导致点第二页仍按 `page=1` 请求且高亮弹回；改为 `handlePageChange(page)` 先写回当前 Tab 再加载
+  - 字典写接口、系统参数保存、四个导出接口均改为后端校验权限码（此前仅靠 `hasAuth` 隐藏按钮，直接调接口即可越权）
+  - 附件地址改为后端下发的短时效签名地址；`/files` 静态目录不再免登录可读，
+    存量旧链接改为携带 `?token=` 由后端受控代理输出（`utils/workflow.ts` 的 `getAttachmentUrl` 已适配，
+    并修正了 `/api/` 开头路径被去前导斜杠导致拼错的问题）
+  - 租户管理页新增「用量」抽屉（账号配额进度条 + 角色/部门/员工/流程/实例/附件/存储统计）
+  - 非平台管理员不再看到「租户管理」菜单（避免出现点开即 403 的死入口）
+  - 修复菜单数据缺陷：权限管理曾误挂在字典管理下（导致字典页永远打不开）、登录日志菜单缺失、
+    `sys_menus` 无主键导致新菜单撞号（已补建唯一索引）
+  - 分页器 `small` 属性改为 `size="small"`（消除 Element Plus 弃用告警）
+  - **修复公告页点开即崩溃**：`/hr/department/tree` 返回 `{ tree: [] }` 对象，却写成 `res?.data ?? []`
+    直接传给 `el-tree-select` 的 `data`（必须为数组）；渲染出 null 子节点后，
+    在弹窗销毁（`destroy-on-close`）时报 `Cannot destructure property 'type' of 'vnode' as it is null` 并整页假死。
+    现统一走 `normalizeTree()` 归一化（兼容数组与 `{tree}` 两种结构）并在异常时回退空数组
+  - **修复部门树勾选无效**：`el-tree-select` 缺少 `node-key`，`show-checkbox` 模式下 `getCheckedKeys()`
+    拿不到值，导致 v-model 存入 `[null, null]`（标签空白 + 提交报“请选择至少一个部门”）；
+    公告页与员工页共 4 处均补上 `node-key="id"`
+  - 附件地址改为后端下发的签名地址（列表与详情均已重写），因此 `getAttachmentUrl` 不再需要拼 token；
+    旧 `/files/` 路径保留 token 拼接仅作为 `requireSigned=false` 时的过渡兼容
+  - `ApprovalComments` 加 `v-if="detail.id"`，避免详情首帧收到 undefined 必填 props 的 prop 校验告警
+- **第九轮（约束适配与权限规范化）**：
+  - **头像不再手填地址**：原「头像地址」输入框改为上传（`/common/file/upload`），
+    且分「入库值 fileId」与「展示值签名地址」两个状态，避免把 15 分钟过期的签名地址写进数据库；
+    后端同步在保存时归一化为 fileId、在各出口（登录/员工列表/详情/审批时间轴）解析为签名地址
+  - **权限码不一致修复**：职位页原用 `hr:position:*` 而平台权限目录是 `hr:post:*`，
+    导致非超管的职位增删改按钮永久隐藏；日志页的 `system:*:delete` 目录里也不存在。
+    已统一为目录中的编码（新增 SQL 补齐缺失码）
+  - **后端统一路由权限**：写接口改为按路由登记权限码（`RoutePermission` 中间件），
+    前端隐藏按钮不再是唯一防线；前端页面无需改动，但新增写接口时需在后端登记
+  - README 重写：附件改为签名地址契约（含 `fileUrl` 不可落库的约束）、新增平台能力/导出接口表、
+    权限码对照表、工程约定补充 4 条（node-key / fileId 落库 / 权限码一致 / 隐藏≠授权）
 
 ## M1-M3 已验证
 
@@ -134,6 +174,11 @@ src/
 | 职位 | `hr:position:add` / `edit` / `delete` |
 | 邀请码 | `hr:invitation:add` / `edit` / `delete` |
 | 日志 | `system:login:delete`、`system:operation:delete` |
+| 字典 | `sys:dict:add` / `edit` / `delete` |
+| 系统参数 | `sys:config:add` / `edit` / `delete` |
+| 租户 | `sys:tenant:add` / `edit` / `switch` |
+| 公告 | `sys:announcement:publish` / `withdraw` / `delete` |
+| 导出 | `engine:instance:export`、`system:login:export`、`system:operation:export`、`hr:employee:export` |
 
 超管拥有 `*:*:*` 时默认具备全部权限。
 
@@ -148,6 +193,10 @@ keep-alive 通过「后端菜单 name」匹配「组件 name」，两者必须�
 | `/system/menu/index` | SystemMenu | SystemMenu |
 | `/system/dict/index` | EnginDict | EnginDict |
 | `/system/permission/index` | SystemPermission | SystemPermission |
+| `/system/config/index` | SystemConfig | SystemConfig |
+| `/system/tenant/index` | SystemTenant | SystemTenant |
+| `/system/announcement/index` | SystemAnnouncement | SystemAnnouncement |
+| `/log/login/index` | SystemLoginLog | SystemLoginLog |
 | `/engine/workflow/index` | EngineWorkFlow | EngineWorkFlow |
 | `/engine/instance/index` | EngineInstance | EngineInstance |
 | `/engine/designer/index` | EngineDesigner | EngineDesigner |

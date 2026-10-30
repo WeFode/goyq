@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { deleteLoginLog, logsLoginListQuery } from "@/api/logLogin";
 import { hasAuth } from "@/router/utils";
 import { message } from "@/utils/message";
+import { downloadExcel } from "@/utils/export";
 
 defineOptions({ name: "SystemLoginLog" });
 
@@ -70,6 +71,26 @@ async function handleBatchDelete() {
   }
 }
 
+const exporting = ref(false);
+
+/** 按当前筛选条件导出（后端 keyword 同时匹配账号与 IP） */
+async function handleExport() {
+  exporting.value = true;
+  try {
+    await downloadExcel(
+      "export/login-logs",
+      {
+        keyword: query.username || query.ip || undefined,
+        startAt: query.dateRange?.[0] || undefined,
+        endAt: query.dateRange?.[1] || undefined
+      },
+      "登录日志.xlsx"
+    );
+  } finally {
+    exporting.value = false;
+  }
+}
+
 const formatTime = (value: any) => {
   if (!value) return "-";
   const date = dayjs(value);
@@ -86,6 +107,17 @@ onMounted(load);
 
 <template>
   <AppPage title="登录日志" description="记录账号登录时间、IP 与登录结果">
+    <template #actions>
+      <el-button
+        v-if="hasAuth('system:login:export')"
+        :loading="exporting"
+        @click="handleExport"
+      >
+        <AppIcon icon="ep:download" :size="14" />
+        导出 Excel
+      </el-button>
+    </template>
+
     <AppSearchBar :loading="loading" @search="search" @reset="resetQuery">
       <el-form-item label="账号">
         <el-input v-model="query.username" placeholder="请输入账号" clearable />
