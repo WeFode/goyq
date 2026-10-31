@@ -29,7 +29,34 @@ export type LoginResult = {
     expireAt: string;
     /** 登录会话ID（同账号并发设备控制） */
     sessionId?: string;
+    /** 密码已过期或从未修改：前端需引导去改密 */
+    mustChangePassword?: boolean;
+    /** 密码是否已过期 */
+    pwdExpired?: boolean;
+    /** 密码剩余有效天数，0 表示不过期 */
+    pwdExpireDays?: number;
   };
+};
+
+/** 登录验证码：是否需要填写由后端安全策略决定，前端不自行判断 */
+export interface CaptchaResult {
+  required: boolean;
+  captchaId: string;
+  /** SVG data URI，可直接用于 img.src */
+  image: string;
+  expireAt: string;
+  /** 账号锁定剩余秒数 */
+  lockRemainSeconds: number;
+  /** 当前连续失败次数 */
+  failCount: number;
+}
+
+/** 获取登录验证码（免鉴权） */
+export const getCaptcha = (params?: {
+  username?: string;
+  tenantCode?: string;
+}) => {
+  return http.request<any>("get", "/auth/captcha", { params });
 };
 
 export type RefreshTokenResult = {

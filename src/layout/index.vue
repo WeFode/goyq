@@ -4,8 +4,10 @@ import AppSidebar from "./components/AppSidebar/index.vue";
 import AppNavbar from "./components/AppNavbar/index.vue";
 import AppTagsView from "./components/AppTagsView/index.vue";
 import AppMain from "./components/AppMain.vue";
+import FilePreview from "@/components/file/FilePreview.vue";
 import { useAppStoreHook } from "@/store/modules/app";
 import { useSettingStoreHook } from "@/store/modules/settings";
+import { useFilePreviewState } from "@/composables/useFilePreview";
 
 defineOptions({ name: "Layout" });
 
@@ -13,6 +15,8 @@ const appStore = useAppStoreHook();
 const settingStore = useSettingStoreHook();
 
 const collapsed = computed(() => !appStore.getSidebarStatus);
+/** 全局附件预览宿主：任意页面调 previewAttachment 即在此弹出 */
+const filePreview = useFilePreviewState();
 const isMobile = computed(() => appStore.getDevice === "mobile");
 const hideTabs = computed(() => settingStore.getHideTabs);
 
@@ -67,6 +71,12 @@ onBeforeUnmount(() => {
       <AppTagsView v-if="!hideTabs" />
       <AppMain />
     </div>
+
+    <FilePreview
+      v-model="filePreview.visible"
+      :file-id="filePreview.fileId"
+      :name="filePreview.name"
+    />
   </div>
 </template>
 

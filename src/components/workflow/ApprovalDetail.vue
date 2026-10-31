@@ -7,8 +7,14 @@ import ApprovalComments from "./ApprovalComments.vue";
 import FormFieldDisplay from "./FormFieldDisplay.vue";
 import WorkflowFormRenderer from "./WorkflowFormRenderer.vue";
 import AttachmentUpload, { type AttachmentInfo } from "./AttachmentUpload.vue";
+import UserSelectDialog from "./UserSelectDialog.vue";
 import { message } from "@/utils/message";
-import { readCcMessage } from "@/api/workflow";
+import {
+  readCcMessage,
+  addSignTask,
+  returnTask,
+  resubmitInstance
+} from "@/api/workflow";
 import { formatApprovalNo } from "@/utils/workflow";
 
 /**
@@ -75,7 +81,14 @@ const canReinitiate = computed(() => {
 /* ============ 表单字段 ============ */
 const fields = computed<any[]>(() => props.formConfig?.fields ?? []);
 
-const fullSpanTypes = ["el-textarea", "el-upload", "el-image-upload", "el-table"];
+const fullSpanTypes = [
+  "el-textarea",
+  "el-upload",
+  "el-image-upload",
+  // 附件卡片里有不换行的文件名，占半列会把标签列挤成一字一行；整行展示
+  "el-file-upload",
+  "el-table"
+];
 const fieldSpan = (field: any) =>
   fullSpanTypes.includes(field.type) ? 2 : 1;
 
@@ -181,6 +194,171 @@ async function submitReinitiate() {
   });
   reinitiateSubmitting.value = false;
   reinitiateVisible.value = false;
+}
+
+/* ============ 加签 / 退回 ============ */
+const pendingTaskId = computed(() => props.permission?.pendingTaskId || "");
+const hasPendingTask = computed(
+  () => Boolean(pendingTaskId.value) && props.detail?.status === "running"
+);
+const pendingApproveType = computed(
+  () => props.permission?.pendingApproveType || ""
+);
+// 任意一人审批节点加签没有语义（一人通过即完成），后端也会拒绝；这里用禁用态说明原因
+const addSignDisabled = computed(
+  () => pendingApproveType.value === "ANY_SIGN"
+);
+
+const addSignVisible = ref(false);
+const addSignSubmitting = ref(false);
+const addSignForm = reactive({
+  signType: "before" as "before" | "after",
+  comment: ""
+});
+const signerUsers = ref<any[]>([]);
+const userSelectVisible = ref(false);
+
+const signerNames = computed(() =>
+  signerUsers.value.map(user => user.employeeName ?? user.name ?? "").join("、")
+);
+
+function openAddSign() {
+  addSignForm.signType = "before";
+  addSignForm.comment = "";
+  signerUsers.value = [];
+  addSignVisible.value = true;
+}
+
+function onSignersSelected(users: any[]) {
+  signerUsers.value = users;
+}
+
+async function submitAddSign() {
+  if (!pendingTaskId.value) {
+    message("当前没有待办任务", { type: "warning" });
+    return;
+  }
+  if (!signerUsers.value.length) {
+    message("请选择加签人", { type: "warning" });
+    return;
+  }
+
+  addSignSubmitting.value = true;
+  try {
+    const res: any = await addSignTask(pendingTaskId.value, {
+      signType: addSignForm.signType,
+      addSignerIds: signerUsers.value.map(user => String(user.id)),
+      comment: addSignForm.comment
+    });
+    message(res?.message || "加签成功", { type: "success" });
+    addSignVisible.value = false;
+    emit("refresh");
+  } catch (error) {
+    // 业务错误已由请求拦截器统一提示，这里不重复弹提示
+    console.error("加签失败:", error);
+  } finally {
+    addSignSubmitting.value = false;
+  }
+}
+
+const returnVisible = ref(false);
+const returnSubmitting = ref(false);
+const returnForm = reactive({
+  returnType: "initiator" as "initiator" | "previous" | "specified",
+  returnTo: "",
+  comment: ""
+});
+
+// 只能退回到已完成审批的节点；是否早于当前节点由后端再校验，不信任前端
+const returnNodeOptions = computed(() =>
+  (props.detail?.processTimeline ?? [])
+    .filter(
+      (node: any) =>
+        node.nodeType === "approve" && node.nodeStatus === "completed"
+    )
+    .map((node: any) => ({ label: node.nodeName, value: node.nodeId }))
+);
+
+function openReturn() {
+  returnForm.returnType = returnNodeOptions.value.length
+    ? "previous"
+    : "initiator";
+  returnForm.returnTo = "";
+  returnForm.comment = "";
+  returnVisible.value = true;
+}
+
+async function submitReturn() {
+  if (!pendingTaskId.value) {
+    message("当前没有待办任务", { type: "warning" });
+    return;
+  }
+  if (!returnForm.comment.trim()) {
+    message("请填写退回原因", { type: "warning" });
+    return;
+  }
+  if (returnForm.returnType === "specified" && !returnForm.returnTo) {
+    message("请选择要退回到的节点", { type: "warning" });
+    return;
+  }
+
+  returnSubmitting.value = true;
+  try {
+    const res: any = await returnTask(pendingTaskId.value, {
+      returnType: returnForm.returnType,
+      returnTo:
+        returnForm.returnType === "specified"
+          ? returnForm.returnTo
+          : undefined,
+      comment: returnForm.comment
+    });
+    message(res?.message || "已退回", { type: "success" });
+    returnVisible.value = false;
+    emit("refresh");
+  } catch (error) {
+    console.error("退回失败:", error);
+  } finally {
+    returnSubmitting.value = false;
+  }
+}
+
+/* ============ 退回后重新提交（沿用同一实例） ============ */
+const canResubmit = computed(
+  () =>
+    props.detail?.status === "returned" &&
+    props.permission?.isInitiator === true
+);
+const resubmitVisible = ref(false);
+const resubmitSubmitting = ref(false);
+const resubmitForm = reactive<Record<string, any>>({});
+const resubmitRendererRef = ref();
+
+function openResubmit() {
+  Object.keys(resubmitForm).forEach(key => delete resubmitForm[key]);
+  Object.assign(resubmitForm, props.detail?.formData ?? {});
+  resubmitVisible.value = true;
+}
+
+async function submitResubmit() {
+  const valid = (await resubmitRendererRef.value?.validate?.()) ?? true;
+  if (!valid) {
+    message("请先完善必填项", { type: "warning" });
+    return;
+  }
+
+  resubmitSubmitting.value = true;
+  try {
+    const res: any = await resubmitInstance(props.detail.id, {
+      ...resubmitForm
+    });
+    message(res?.message || "已重新提交", { type: "success" });
+    resubmitVisible.value = false;
+    emit("refresh");
+  } catch (error) {
+    console.error("重新提交失败:", error);
+  } finally {
+    resubmitSubmitting.value = false;
+  }
 }
 
 /* ============ 打印 ============ */
@@ -352,12 +530,34 @@ watch(
             拒绝
           </el-button>
           <el-button
+            v-if="hasPendingTask"
+            :disabled="addSignDisabled"
+            :title="
+              addSignDisabled
+                ? '任意一人审批节点不支持加签（一人通过即完成），请改用转派'
+                : '邀请他人在您之前/之后签署'
+            "
+            @click="openAddSign"
+          >
+            加签
+          </el-button>
+          <el-button v-if="hasPendingTask" plain @click="openReturn">
+            退回
+          </el-button>
+          <el-button
             v-if="canCancel"
             type="warning"
             plain
             @click="cancelVisible = true"
           >
             撤销流程
+          </el-button>
+          <el-button
+            v-if="canResubmit"
+            type="primary"
+            @click="openResubmit"
+          >
+            重新提交
           </el-button>
           <el-button v-if="canReinitiate" type="primary" plain @click="openReinitiate">
             重新发起
@@ -377,8 +577,23 @@ watch(
     <div v-loading="loading" class="app-approval">
       <!-- 左侧：申请信息 + 评论 -->
       <section class="app-approval__main">
+        <el-alert
+          v-if="detail.status === 'returned'"
+          type="warning"
+          :closable="false"
+          show-icon
+        >
+          <template #title>
+            该申请已被退回发起人{{
+              canResubmit ? "，请修改后重新提交" : "，等待发起人修改后重新提交"
+            }}
+          </template>
+        </el-alert>
+
         <AppDetailSection title="申请信息">
-          <el-descriptions :column="2" border>
+          <!-- table-layout 必须固定：auto 布局下附件卡片里 nowrap 的文件名会把
+               申请信息表撑成“标签列一字一行、值列也被挤压”的惨状 -->
+          <el-descriptions :column="2" border label-width="96px">
             <el-descriptions-item label="申请人">
               <div class="app-approval__person">
                 <AppUserAvatar
@@ -423,6 +638,7 @@ watch(
         <AppDetailSection title="流程进度">
           <ApprovalTimeline
             :nodes="detail.processTimeline ?? []"
+            :history="detail.history ?? []"
             :initiator-name="detail.initiatorName"
             :initiator-avatar="detail.initiatorAvatar"
             :initiator-dept-name="detail.initiatorDeptName"
@@ -505,6 +721,129 @@ watch(
       @update:model-value="value => Object.assign(reinitiateForm, value)"
     />
   </AppFormDialog>
+
+  <!-- 加签 -->
+  <AppFormDialog
+    v-model="addSignVisible"
+    title="加签"
+    :loading="addSignSubmitting"
+    width="520px"
+    confirm-text="确认加签"
+    @confirm="submitAddSign"
+  >
+    <el-form label-width="88px">
+      <el-form-item label="加签方式">
+        <el-radio-group v-model="addSignForm.signType">
+          <el-radio value="before">前加签（先由加签人审）</el-radio>
+          <el-radio value="after">后加签（您审完再由加签人审）</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="加签人" required>
+        <div class="app-approval__picker">
+          <span v-if="signerNames" class="app-approval__picker-value">
+            {{ signerNames }}
+          </span>
+          <span v-else class="app-approval__picker-empty">请选择加签人</span>
+          <el-button link type="primary" @click="userSelectVisible = true">
+            选择
+          </el-button>
+        </div>
+      </el-form-item>
+      <el-form-item label="加签说明">
+        <el-input
+          v-model="addSignForm.comment"
+          type="textarea"
+          :rows="3"
+          maxlength="500"
+          show-word-limit
+          placeholder="请说明加签原因（选填）"
+        />
+      </el-form-item>
+    </el-form>
+  </AppFormDialog>
+
+  <!-- 退回 -->
+  <AppFormDialog
+    v-model="returnVisible"
+    title="退回"
+    :loading="returnSubmitting"
+    width="520px"
+    confirm-text="确认退回"
+    @confirm="submitReturn"
+  >
+    <el-form label-width="88px">
+      <el-form-item label="退回到">
+        <el-radio-group v-model="returnForm.returnType">
+          <el-radio value="initiator">发起人</el-radio>
+          <el-radio
+            value="previous"
+            :disabled="!returnNodeOptions.length"
+          >
+            上一步
+          </el-radio>
+          <el-radio
+            value="specified"
+            :disabled="!returnNodeOptions.length"
+          >
+            指定节点
+          </el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item
+        v-if="returnForm.returnType === 'specified'"
+        label="目标节点"
+        required
+      >
+        <el-select
+          v-model="returnForm.returnTo"
+          placeholder="请选择节点"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="node in returnNodeOptions"
+            :key="node.value"
+            :label="node.label"
+            :value="node.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="退回原因" required>
+        <el-input
+          v-model="returnForm.comment"
+          type="textarea"
+          :rows="3"
+          maxlength="500"
+          show-word-limit
+          placeholder="请说明退回原因"
+        />
+      </el-form-item>
+    </el-form>
+  </AppFormDialog>
+
+  <!-- 退回后重新提交：沿用同一实例，表单预填后可修改 -->
+  <AppFormDialog
+    v-model="resubmitVisible"
+    title="修改后重新提交"
+    :loading="resubmitSubmitting"
+    width="720px"
+    confirm-text="重新提交"
+    @confirm="submitResubmit"
+  >
+    <WorkflowFormRenderer
+      ref="resubmitRendererRef"
+      :fields="fields"
+      :model-value="resubmitForm"
+      @update:model-value="value => Object.assign(resubmitForm, value)"
+    />
+  </AppFormDialog>
+
+  <UserSelectDialog
+    v-model="userSelectVisible"
+    title="选择加签人"
+    multiple
+    :selected-ids="signerUsers.map(user => String(user.id))"
+    @confirm="onSignersSelected"
+  />
 </template>
 
 <style scoped lang="scss">
@@ -512,6 +851,19 @@ watch(
   display: flex;
   gap: 16px;
   align-items: flex-start;
+
+  // el-descriptions 默认是 auto 表格布局：只要某个值单元格里有不换行的长内容
+  // （附件文件名、长英文单词），浏览器就会把它撑宽、把标签列/其他值列压到
+  // min-content（一字一行）。固定列宽 + 允许内容换行才能真正稳住排版。
+  :deep(.el-descriptions__table) {
+    table-layout: fixed;
+  }
+
+  :deep(.el-descriptions__content) {
+    min-width: 0;
+    word-break: break-word;
+    white-space: normal;
+  }
 
   &__main {
     display: flex;
@@ -526,6 +878,30 @@ watch(
     padding: 16px;
     background: var(--app-subtle);
     border-radius: var(--app-radius-md);
+  }
+
+  /* 加签人选择：只读展示 + 弹窗选人 */
+  &__picker {
+    display: flex;
+    flex: 1;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+  }
+
+  &__picker-value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--app-text-1);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__picker-empty {
+    flex: 1;
+    color: var(--app-text-4);
   }
 
   &__header {

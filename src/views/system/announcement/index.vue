@@ -336,8 +336,6 @@ onMounted(() => {
       title="公告详情"
       size="520px"
       :loading="detailLoading"
-      confirm-text="关闭"
-      @confirm="detailVisible = false"
     >
       <template v-if="detail">
         <AppDetailSection title="基本信息">

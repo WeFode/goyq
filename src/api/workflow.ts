@@ -84,6 +84,23 @@ export const delegateTask = (taskId: string, data: any) => {
   return http.request<any>("post", `/workflow/task/${taskId}/delegate`, { data });
 }
 
+/** 加签（before 前加签 / after 后加签） */
+export const addSignTask = (taskId: string, data: any) => {
+  return http.request<any>("post", `/workflow/task/${taskId}/add-sign`, { data });
+}
+
+/** 退回（initiator 发起人 / previous 上一步 / specified 指定节点） */
+export const returnTask = (taskId: string, data: any) => {
+  return http.request<any>("post", `/workflow/task/${taskId}/return`, { data });
+}
+
+/** 退回后重新提交（复用同一个实例） */
+export const resubmitInstance = (instanceId: string, formData: any) => {
+  return http.request<any>("post", `/workflow/instance/${instanceId}/resubmit`, {
+    data: { instanceId, formData }
+  });
+}
+
 /** 已读抄送消息  ccId */
 export const readCcMessage = (data: any) => {
   return http.request<any>("post", `/workflow/cc/read`, { data });

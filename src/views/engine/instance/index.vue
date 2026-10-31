@@ -23,7 +23,11 @@ import { hasAuth } from "@/router/utils";
 import { downloadExcel } from "@/utils/export";
 import { message } from "@/utils/message";
 import { emitter } from "@/utils/mitt";
-import { statusConfig } from "@/utils/workflow";
+import { statusConfig, getAttachmentUrl } from "@/utils/workflow";
+import {
+  previewAttachment,
+  getAttachmentFileId
+} from "@/composables/useFilePreview";
 import ApprovalDetail from "@/components/workflow/ApprovalDetail.vue";
 import WorkflowLaunchDialog from "@/components/workflow/WorkflowLaunchDialog.vue";
 import FormFieldDisplay from "@/components/workflow/FormFieldDisplay.vue";
@@ -462,7 +466,11 @@ onMounted(async () => {
   const { tab, instanceId, id } = route.query as Record<string, string>;
 
   if (tab) {
-    activeTab.value = tab as TabKey;
+    // URL 里的 tab 可能来自手工输入或旧书签：未知值直接回落到「我发起的」。
+    // 不兜底会让 filters[activeTab]/pagination[activeTab] 取到 undefined，
+    // 页面报错 reading 'keyword' / 'currentPage' 并且列表全空。
+    const fallbackTab = tabs.find(item => item.key === tab)?.key ?? "initiated";
+    activeTab.value = fallbackTab as TabKey;
     await loadList(activeTab.value);
     if (instanceId) openDetail(instanceId);
   } else {
@@ -607,16 +615,26 @@ const previewAttachments = computed<any[]>(() => {
   Object.values(data).forEach((value: any) => {
     if (!Array.isArray(value)) return;
     value.forEach((item: any) => {
-      if (item?.fileUrl || item?.url) {
-        files.push({
-          name: item.fileName || item.name || "附件",
-          url: item.fileUrl || item.url
-        });
-      }
+      const fileId = getAttachmentFileId(item);
+      const url = getAttachmentUrl(item);
+      if (!fileId && !url) return;
+      files.push({
+        // fileId 必须保留：预览器只认 fileId（能预览与否、用哪种方式由后端判定），
+        // 之前这里只留了 url，导致审批中心无法接入应用内离线预览
+        fileId,
+        name: item.fileName || item.name || "附件",
+        url
+      });
     });
   });
   return files;
 });
+
+/** 附件点击走应用内离线预览 */
+function onPreviewAttachment(file: any) {
+  if (previewAttachment(file)) return;
+  message("附件地址不可用", { type: "error" });
+}
 
 const previewTimeline = computed<any[]>(
   () => previewDetail.value?.processTimeline ?? []
@@ -970,17 +988,29 @@ function openFullDetail(row: any) {
                 附件材料（{{ previewAttachments.length }}）
               </h4>
               <div class="approval-preview__files">
-                <a
+                <div
                   v-for="file in previewAttachments"
-                  :key="file.url"
+                  :key="file.fileId || file.url"
                   class="approval-preview__file"
-                  :href="file.url"
-                  target="_blank"
-                  rel="noopener"
+                  role="button"
+                  tabindex="0"
+                  title="点击预览"
+                  @click="onPreviewAttachment(file)"
+                  @keydown.enter.prevent="onPreviewAttachment(file)"
                 >
                   <AppIcon icon="ep:files" :size="14" />
                   <span>{{ file.name }}</span>
-                </a>
+                  <a
+                    class="approval-preview__file-dl"
+                    :href="file.url"
+                    target="_blank"
+                    rel="noopener"
+                    title="下载"
+                    @click.stop
+                  >
+                    <AppIcon icon="ep:download" :size="13" />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -1079,7 +1109,7 @@ function openFullDetail(row: any) {
       title="选择审批流程"
       width="640px"
       confirm-text="关闭"
-      cancel-text=" "
+      :show-cancel="false"
       @confirm="workflowSelectVisible = false"
       @cancel="workflowSelectVisible = false"
     >
@@ -1536,10 +1566,26 @@ function openFullDetail(row: any) {
     background: var(--app-subtle);
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-sm);
+    cursor: pointer;
+    transition:
+      color var(--app-duration-fast),
+      border-color var(--app-duration-fast);
 
     &:hover {
       color: var(--app-primary);
       border-color: var(--app-primary-border);
+    }
+  }
+
+  /* 预览与下载分离：默认在应用内离线预览，下载仍是直链 */
+  &__file-dl {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    color: var(--app-text-4);
+
+    &:hover {
+      color: var(--app-primary);
     }
   }
 

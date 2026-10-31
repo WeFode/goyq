@@ -9,12 +9,14 @@ import {
   kbCategoryListQuery,
   kbDocDetailQuery,
   kbDocListQuery,
+  kbDocSearch,
   publishKbDoc,
   updateKbDoc,
   type KbCategory,
   type KbDoc
 } from "@/api/kb";
 import { uploadFile } from "@/api/common";
+import { previewAttachment } from "@/composables/useFilePreview";
 import { ElMessageBox } from "element-plus";
 import { hasAuth } from "@/router/utils";
 import { message } from "@/utils/message";
@@ -60,18 +62,42 @@ const categoryName = (id: string) =>
   categories.value.find(item => item.id === id)?.name || "未分类";
 
 /* ==================== 列表 ==================== */
-const query = reactive<{ keyword: string; scope: "company" | "personal" }>({
+const query = reactive<{
+  keyword: string;
+  scope: "company" | "personal";
+  /** 开启后走附件正文检索（而不是只比标题/标签） */
+  searchContent: boolean;
+}>({
   keyword: "",
-  scope: "company"
+  scope: "company",
+  searchContent: false
 });
+
+/**
+ * 本次检索后端给出的范围说明（扫描文档数上限等），直接展示不自己编文案
+ */
+const searchNote = ref("");
 
 const { loading, list, pagination, search, refresh, reset, refreshAfterDelete } =
   useTable<KbDoc>({
-    fetcher: params =>
-      kbDocListQuery({
+    // 两种检索模式共用一条链路，否则分页/分类/排序会在两边漂移
+    fetcher: (args: Record<string, any>) => {
+      const { searchContent, ...params } = args;
+      const scoped: Record<string, any> = {
         ...params,
         categoryId: activeCategoryId.value || undefined
-      }),
+      };
+      const keyword = String(scoped.keyword || "").trim();
+      const useContent = !!searchContent && !!keyword;
+      const request = useContent
+        ? kbDocSearch({ ...scoped, keyword })
+        : kbDocListQuery({ ...scoped, keyword: keyword || undefined });
+      return request.then((res: any) => {
+        // 正文检索会回“本次只扫了多少篇”的范围说明；普通列表则清空该提示
+        searchNote.value = useContent ? res?.data?.message || "" : "";
+        return res;
+      });
+    },
     query
   });
 
@@ -82,9 +108,48 @@ function switchScope(scope: "company" | "personal") {
 
 function resetQuery() {
   query.keyword = "";
+  query.searchContent = false;
   activeCategoryId.value = "";
+  searchNote.value = "";
   reset();
 }
+
+/**
+ * 把命中片段拆成「普通文本 / 关键词」交替的片段列表。
+ *
+ * 不用 v-html 高亮：片段内容来自上传的文件正文，直接注入 HTML 等于把
+ * 存储型 XSS 交给上传文件的人；渲染成节点序列就没这个口子。
+ */
+function snippetParts(snippet: string, needle: string) {
+  const text = snippet || "";
+  const keyword = (needle || "").trim();
+  if (!keyword) return [{ text, hit: false }];
+
+  const lowerText = text.toLowerCase();
+  const lowerKey = keyword.toLowerCase();
+  const parts: Array<{ text: string; hit: boolean }> = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    const index = lowerText.indexOf(lowerKey, cursor);
+    if (index < 0) {
+      parts.push({ text: text.slice(cursor), hit: false });
+      break;
+    }
+    if (index > cursor) {
+      parts.push({ text: text.slice(cursor, index), hit: false });
+    }
+    parts.push({ text: text.slice(index, index + keyword.length), hit: true });
+    cursor = index + keyword.length;
+  }
+  return parts.length ? parts : [{ text, hit: false }];
+}
+
+const snippetSegments = computed(() =>
+  list.value.map(row => ({
+    id: row.id,
+    parts: snippetParts(row.snippet || "", query.keyword)
+  }))
+);
 
 /* ==================== 新增 / 编辑 ==================== */
 const dialogVisible = ref(false);
@@ -320,29 +385,16 @@ const imagePreviewList = computed(() =>
 );
 
 /**
- * 文档预览：PDF 用签名地址直开；Office(docx/xlsx/pptx 等)跳微软在线预览。
- * 注意：Office 在线预览要求附件地址公网可达，本地/内网环境会失败，此时请改点“下载”；
- * 生产环境附件走正式域名后可正常外链预览。
+ * 附件预览统一交给布局根上的 FilePreview 宿主（见 composables/useFilePreview）：
+ * 它能不能预览、用什么方式预览由后端 `/common/file/{id}/preview` 判定。
+ * 原来的“拼微软在线预览外链”已去掉：政务/内网环境没有外网出口，
+ * 那个链接在客户现场注定是死链，比“说不能预览”更伤信任。
+ * 不在本页再挂一个弹窗实例，否则知识库和审批的行为会逐轮漂移。
  */
-function previewFile(att: { url: string; name: string; fileExt?: string }) {
-  if (!att?.url) {
-    message("附件地址不可用", { type: "warning" });
-    return;
+function openPreview(att: { id?: string; name?: string; fileName?: string }) {
+  if (!previewAttachment(att)) {
+    message("附件标识不可用", { type: "warning" });
   }
-  const name = (att.fileExt || att.name || "").toLowerCase();
-  if (/\.pdf$/.test(name)) {
-    window.open(att.url, "_blank");
-    return;
-  }
-  if (/\.(docx?|xlsx?|pptx?)$/.test(name)) {
-    window.open(
-      "https://view.officeapps.live.com/op/view.aspx?src=" +
-        encodeURIComponent(att.url),
-      "_blank"
-    );
-    return;
-  }
-  window.open(att.url, "_blank");
 }
 
 onMounted(() => {
@@ -410,7 +462,21 @@ onMounted(() => {
               clearable
             />
           </el-form-item>
+          <el-form-item label="范围">
+            <el-checkbox v-model="query.searchContent" @change="search">
+              搜附件正文
+            </el-checkbox>
+          </el-form-item>
         </AppSearchBar>
+
+        <el-alert
+          v-if="searchNote"
+          class="kb__note"
+          type="info"
+          show-icon
+          :closable="false"
+          :title="searchNote"
+        />
 
         <AppDataTable
           :data="list"
@@ -436,6 +502,18 @@ onMounted(() => {
               <div class="kb__cell">
                 <span class="app-text--strong">{{ row.title }}</span>
                 <span v-if="row.tags" class="kb__muted">{{ row.tags }}</span>
+                <span v-if="row.snippet" class="kb__snippet">
+                  <template v-if="!row.snippetIsHit"
+                    >命中位置靠后，以下为文档开头：</template
+                  >
+                  <template
+                    v-for="(part, index) in (snippetSegments.find(s => s.id === row.id)?.parts ?? [])"
+                    :key="index"
+                  >
+                    <mark v-if="part.hit" class="kb__snippet-hit">{{ part.text }}</mark>
+                    <template v-else>{{ part.text }}</template>
+                  </template>
+                </span>
               </div>
             </template>
           </el-table-column>
@@ -614,7 +692,7 @@ onMounted(() => {
                 class="kb__thumb"
               />
             </div>
-            <!-- 文档：Office 在线预览 / 下载 -->
+            <!-- 文档：统一预览入口（PDF 本地渲染，不可预览时明说并给下载） -->
             <div v-if="fileAttachments.length" class="kb__files">
               <div
                 v-for="att in fileAttachments"
@@ -624,7 +702,7 @@ onMounted(() => {
                 <AppIcon icon="ep:document" :size="14" />
                 <span class="kb__attach-name">{{ att.name }}</span>
                 <span class="kb__muted">{{ formatSize(att.size) }}</span>
-                <el-button link type="primary" @click="previewFile(att)">
+                <el-button link type="primary" @click="openPreview(att)">
                   预览
                 </el-button>
                 <el-button link type="primary" @click="handleDownload(att.id)">
@@ -699,6 +777,28 @@ onMounted(() => {
   &__muted {
     font-size: var(--app-font-12);
     color: var(--app-text-3);
+  }
+
+  /* 正文检索命中片段：多行取前几行，不能把表格撑高 */
+  &__snippet {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--app-font-12);
+    line-height: 18px;
+    color: var(--app-text-3);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  &__note {
+    margin-bottom: 8px;
+  }
+
+  &__snippet-hit {
+    padding: 0 1px;
+    color: var(--app-text-1);
+    background: var(--app-warning-bg, #fef3e6);
+    border-radius: 2px;
   }
 
   &__upload {

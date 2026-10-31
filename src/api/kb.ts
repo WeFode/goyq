@@ -39,6 +39,10 @@ export interface KbDoc {
   createdAt?: string;
   updatedAt?: string;
   cover?: string;
+  /** 正文检索命中的片段，仅 /kb/doc/search 返回 */
+  snippet?: string;
+  /** false 表示命中位置靠后，片段取的是文档开头 */
+  snippetIsHit?: boolean;
   attachments?: KbAttachment[];
 }
 
@@ -65,6 +69,21 @@ export const deleteKbCategory = (id: string) => {
 /** 文档列表 */
 export const kbDocListQuery = (params?: object) => {
   return http.request<any>("get", "/kb/doc/list", { params });
+};
+
+/**
+ * 按附件正文检索文档。
+ * 可见性由后端按“企业文档全员 / 个人文件仅本人”收敛，前端不需传拥有者。
+ */
+export const kbDocSearch = (params: {
+  keyword: string;
+  scope?: string;
+  categoryId?: string;
+  mine?: boolean;
+  page?: number;
+  pageSize?: number;
+}) => {
+  return http.request<any>("get", "/kb/doc/search", { params });
 };
 
 /** 文档详情 */

@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { addInstanceComment } from "@/api/workflow";
 import { message } from "@/utils/message";
 import { getAttachmentUrl, isImageFile } from "@/utils/workflow";
+import { previewAttachment } from "@/composables/useFilePreview";
 import AttachmentUpload, { type AttachmentInfo } from "./AttachmentUpload.vue";
 
 /** 审批评论面板：评论列表 + 新增评论（支持附件） */
@@ -29,6 +30,12 @@ const commentList = computed(() =>
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
+    // 后端把评论附件存在 extraData.attachments，而不是顶层 attachments；
+    // 之前模板直接读 item.attachments，导致评论附件胶囊永远不渲染
+    .map(item => ({
+      ...item,
+      attachments: item.attachments ?? item.extraData?.attachments ?? []
+    }))
 );
 
 const formatTime = (value: any) => {
@@ -39,6 +46,12 @@ const formatTime = (value: any) => {
 
 const fileUrl = (file: any) => getAttachmentUrl(file);
 const fileName = (file: any) => file?.fileName || file?.name || "附件";
+
+/** 附件点击走应用内离线预览（能预览与否、用哪种方式由后端判定） */
+function onPreview(file: any) {
+  if (previewAttachment(file)) return;
+  message("附件地址不可用", { type: "error" });
+}
 
 async function submit() {
   if (!content.value.trim()) {
@@ -109,13 +122,15 @@ async function submit() {
         <p class="app-comments__content">{{ item.comment }}</p>
 
         <div v-if="item.attachments?.length" class="app-comments__files">
-          <a
+          <div
             v-for="file in item.attachments"
             :key="file.fileId || file.fileName"
             class="app-comments__file"
-            :href="fileUrl(file)"
-            target="_blank"
-            rel="noopener"
+            role="button"
+            tabindex="0"
+            title="点击预览"
+            @click="onPreview(file)"
+            @keydown.enter.prevent="onPreview(file)"
           >
             <el-image
               v-if="isImageFile(file)"
@@ -124,8 +139,18 @@ async function submit() {
               fit="cover"
             />
             <AppIcon v-else icon="ep:files" :size="14" />
-            {{ fileName(file) }}
-          </a>
+            <span class="app-comments__file-name">{{ fileName(file) }}</span>
+            <a
+              class="app-comments__file-dl"
+              :href="fileUrl(file)"
+              target="_blank"
+              rel="noopener"
+              title="下载"
+              @click.stop
+            >
+              <AppIcon icon="ep:download" :size="13" />
+            </a>
+          </div>
         </div>
       </li>
     </ul>
@@ -207,12 +232,42 @@ async function submit() {
     display: flex;
     gap: 6px;
     align-items: center;
+    max-width: 220px;
     padding: 4px 8px;
     font-size: var(--app-font-12);
     color: var(--app-text-2);
+    cursor: pointer;
     background: var(--app-container);
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-xs);
+    transition:
+      color var(--app-duration-fast),
+      border-color var(--app-duration-fast);
+
+    &:hover {
+      color: var(--app-primary);
+      border-color: var(--app-primary);
+    }
+  }
+
+  &__file-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 预览与下载分离：默认在应用内离线预览，下载仍是直链 */
+  &__file-dl {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    color: var(--app-text-4);
+
+    &:hover {
+      color: var(--app-primary);
+    }
   }
 
   &__thumb {

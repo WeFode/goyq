@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 import dayjs from "dayjs";
 import { deleteLoginLog, logsLoginListQuery } from "@/api/logLogin";
+import AuditVerifyButton from "@/components/audit/AuditVerifyButton.vue";
 import { hasAuth } from "@/router/utils";
 import { message } from "@/utils/message";
 import { downloadExcel } from "@/utils/export";
@@ -106,8 +107,9 @@ onMounted(load);
 </script>
 
 <template>
-  <AppPage title="登录日志" description="记录账号登录时间、IP 与登录结果">
+  <AppPage title="登录日志" description="记录账号登录时间、IP 与登录结果；开启哈希链后可校验记录是否被篡改">
     <template #actions>
+      <AuditVerifyButton type="login" />
       <el-button
         v-if="hasAuth('system:login:export')"
         :loading="exporting"

@@ -9,6 +9,7 @@ import { useSettingStoreHook } from "@/store/modules/settings";
 import { initRouter, getTopMenu } from "@/router/utils";
 import { WebSocketService } from "@/utils/websocket/service";
 import { applyAccount } from "@/api/invitation";
+import { getCaptcha } from "@/api/user";
 import logoUrl from "@/assets/logo.svg";
 
 defineOptions({ name: "Login" });
@@ -30,8 +31,35 @@ const TENANT_CODE_KEY = "loginTenantCode";
 const ruleForm = reactive({
   tenantCode: "",
   username: "",
-  password: ""
+  password: "",
+  captchaCode: ""
 });
+
+/* ============ 验证码（是否需要、何时要求均由后端安全策略决定） ============ */
+const captcha = reactive({
+  required: false,
+  captchaId: "",
+  image: "",
+  lockRemainSeconds: 0
+});
+
+async function refreshCaptcha() {
+  try {
+    const res: any = await getCaptcha({
+      username: ruleForm.username || undefined,
+      tenantCode: ruleForm.tenantCode || undefined
+    });
+    const data = res?.data || {};
+    captcha.required = !!data.required;
+    captcha.captchaId = data.captchaId || "";
+    captcha.image = data.image || "";
+    captcha.lockRemainSeconds = data.lockRemainSeconds || 0;
+    if (!captcha.required) ruleForm.captchaCode = "";
+  } catch {
+    // 验证码接口异常不阻断登录页；提交时后端仍会按策略拦截
+    captcha.required = false;
+  }
+}
 
 const applyForm = reactive({
   inviteCode: "",
@@ -143,28 +171,50 @@ async function onLogin(formEl?: FormInstance) {
       .loginByUsername({
         tenantCode: ruleForm.tenantCode || undefined,
         username: ruleForm.username,
-        password: ruleForm.password
+        password: ruleForm.password,
+        captchaId: captcha.captchaId || undefined,
+        captchaCode: ruleForm.captchaCode || undefined
       })
-      .then(res => {
-        if (!res.success) {
+      .then((res: any) => {
+        if (!res?.success) {
           message("登录失败", { type: "error" });
+          refreshCaptcha();
           return;
         }
 
         saveRememberedPassword();
         localStorage.setItem(TENANT_CODE_KEY, ruleForm.tenantCode || "");
 
+        // 密码策略（有效期/首次强制改密）由后端判定，这里只负责把用户带到改密入口
+        const mustChange = !!res?.data?.mustChangePassword;
+        const expired = !!res?.data?.pwdExpired;
+
         return initRouter()
           .then(() => new Promise(resolve => setTimeout(resolve, 200)))
-          .then(() => {
+          .then(async () => {
             // 登录成功后建立 WebSocket 连接，保证消息实时推送
             setTimeout(() => WebSocketService.getInstance().connect(), 500);
-            return redirectToHome();
+            if (mustChange) {
+              await router.push("/profile");
+              message(
+                expired
+                  ? "密码已超过有效期，请先修改密码后再继续使用"
+                  : "为了账号安全，请先修改初始密码",
+                { type: "warning" }
+              );
+              return;
+            }
+            await redirectToHome();
           })
           .catch(error => {
             console.error("路由初始化失败:", error);
             return redirectToHome("登录成功，但路由初始化失败");
           });
+      })
+      .catch((error: any) => {
+        // 失败原因可能包含「请输入验证码 / 账号已锁定」，必须回显并重新取码
+        message(error?.message || "用户名或密码错误", { type: "error" });
+        refreshCaptcha();
       })
       .finally(() => {
         loading.value = false;
@@ -231,6 +281,7 @@ onMounted(() => {
   ruleForm.tenantCode = localStorage.getItem(TENANT_CODE_KEY) || "";
   loadRememberedPassword();
   window.document.addEventListener("keypress", onkeypress);
+  refreshCaptcha();
 });
 
 onBeforeUnmount(() => {
@@ -382,6 +433,29 @@ onBeforeUnmount(() => {
                 <AppIcon icon="ep:lock" :size="15" />
               </template>
             </el-input>
+          </el-form-item>
+
+          <!-- 验证码仅在安全策略要求时出现（失败次数达阈值或策略设为始终要求） -->
+          <el-form-item v-if="captcha.required" label="验证码" prop="captchaCode">
+            <div class="login__captcha">
+              <el-input
+                v-model="ruleForm.captchaCode"
+                placeholder="请输入计算结果"
+                clearable
+              >
+                <template #prefix>
+                  <AppIcon icon="ep:key" :size="15" />
+                </template>
+              </el-input>
+              <img
+                v-if="captcha.image"
+                :src="captcha.image"
+                alt="图形验证码，点击重新获取"
+                class="login__captcha-img"
+                title="看不清？点击换一张"
+                @click="refreshCaptcha"
+              />
+            </div>
           </el-form-item>
 
           <div class="login__options">
@@ -875,6 +949,27 @@ onBeforeUnmount(() => {
       font-size: 13px;
       color: #4e5969;
     }
+  }
+
+  &__captcha {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+
+    .el-input {
+      flex: 1;
+    }
+  }
+
+  &__captcha-img {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 6px;
+    cursor: pointer;
+    background: #f2f5fb;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
   }
 
   &__link {

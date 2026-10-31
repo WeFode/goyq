@@ -23,6 +23,7 @@ export const WORKFLOW_STATUS: Record<string, DictMeta> = {
   approved: { text: "已通过", type: "success", icon: "ep:circle-check" },
   completed: { text: "已完成", type: "success", icon: "ep:circle-check" },
   rejected: { text: "已驳回", type: "danger", icon: "ep:circle-close" },
+  returned: { text: "已退回", type: "warning", icon: "ep:back" },
   cancelled: { text: "已撤销", type: "info", icon: "ep:circle-close" },
   canceled: { text: "已撤销", type: "info", icon: "ep:circle-close" }
 };
@@ -36,6 +37,7 @@ export const TASK_STATUS: Record<string, DictMeta> = {
   cancelled: { text: "已取消", type: "info" },
   canceled: { text: "已取消", type: "info" },
   transferred: { text: "已转交", type: "info" },
+  returned: { text: "已退回", type: "warning" },
   skipped: { text: "已跳过", type: "info" },
   completed: { text: "已完成", type: "success" }
 };
@@ -58,12 +60,16 @@ export const NODE_STATUS: Record<string, DictMeta> = {
 export const APPROVAL_ACTION: Record<string, string> = {
   approve: "同意",
   reject: "驳回",
+  return: "退回",
   cancel: "撤销",
   transfer: "转交",
+  delegate: "转派",
   add: "加签",
+  addsign: "加签",
   cc: "抄送",
   submit: "提交",
   reinitiate: "重新发起",
+  complete: "结束",
   start: "发起"
 };
 

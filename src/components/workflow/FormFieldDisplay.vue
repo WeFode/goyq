@@ -3,13 +3,12 @@ import { computed } from "vue";
 import dayjs from "dayjs";
 import { numberToUppercase } from "@/utils/numberToUppercase";
 import {
-  canPreviewFile,
   formatFileSize,
   getAttachmentUrl,
-  getFileExt,
   getFileIcon,
   isImageFile
 } from "@/utils/workflow";
+import { previewAttachment } from "@/composables/useFilePreview";
 import { message } from "@/utils/message";
 
 /**
@@ -115,25 +114,16 @@ const fileUrl = (file: any) => getAttachmentUrl(file);
 
 const fileName = (file: any) => file?.name || file?.fileName || "附件";
 
+/**
+ * 附件预览统一交给应用内的 FilePreview 宿主：
+ * 能不能预览、用什么方式预览由后端 /common/file/{id}/preview 判定。
+ * 原来的“pdf 跳新页 + Office 拼微软在线预览外链”已去掉：
+ * 政务/内网环境没有外网出口，那个外链在客户现场注定是死链，
+ * 而且会把带签名的附件地址交给第三方，本身也是数据外流。
+ */
 function previewFile(file: any) {
-  const url = fileUrl(file);
-  if (!url) {
-    message("文件地址无效", { type: "error" });
-    return;
-  }
-  const ext = getFileExt(fileName(file));
-  if (["pdf", "txt", "csv"].includes(ext)) {
-    window.open(url, "_blank");
-    return;
-  }
-  if (["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext)) {
-    window.open(
-      `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`,
-      "_blank"
-    );
-    return;
-  }
-  window.open(url, "_blank");
+  if (previewAttachment(file)) return;
+  message("文件地址无效", { type: "error" });
 }
 
 function downloadFile(file: any) {
@@ -239,7 +229,7 @@ const isUploadType = computed(() =>
 
         <div class="app-field-display__file-actions">
           <el-button
-            v-if="canPreviewFile(file)"
+            v-if="!isImageFile(file)"
             link
             type="primary"
             @click="previewFile(file)"
@@ -308,6 +298,9 @@ const isUploadType = computed(() =>
     display: flex;
     gap: 10px;
     align-items: center;
+    // 单元格变窄时卡片必须能跟着缩，否则会把整张申请信息表撑宽
+    min-width: 0;
+    max-width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-sm);

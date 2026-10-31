@@ -2,6 +2,9 @@
 import { computed } from "vue";
 import dayjs from "dayjs";
 import { getAttachmentUrl, isImageFile } from "@/utils/workflow";
+import { APPROVAL_ACTION } from "@/utils/dicts";
+import { previewAttachment } from "@/composables/useFilePreview";
+import { message } from "@/utils/message";
 
 /**
  * 审批流程时间轴：发起人 + 各审批/抄送节点
@@ -9,6 +12,8 @@ import { getAttachmentUrl, isImageFile } from "@/utils/workflow";
  */
 interface Props {
   nodes: any[];
+  /** 审批历史：用于展示加签/退回/重新提交等不在节点里的动作 */
+  history?: any[];
   initiatorName?: string;
   initiatorAvatar?: string;
   initiatorDeptName?: string;
@@ -17,11 +22,32 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   nodes: () => [],
+  history: () => [],
   initiatorName: "",
   initiatorAvatar: "",
   initiatorDeptName: "",
   createdAt: ""
 });
+
+/**
+ * 加签/退回/重新提交属于「动作」而不是「流程节点」，processTimeline 里没有它们。
+ * 这里从 history 里挑出来单独展示，否则审批详情上根本看不到“这个人被加签过/被退回过”。
+ */
+const actionLogs = computed(() =>
+  (props.history ?? [])
+    .filter((item: any) => {
+      if (item.action === "addsign" || item.action === "return") return true;
+      // 退回后的重新提交也走 submit 动作，靠意见文案区分首次发起
+      return item.action === "submit" && String(item.comment ?? "").includes("重新提交");
+    })
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+);
+
+const actionText = (action: string) =>
+  APPROVAL_ACTION[action] ?? "操作";
 
 const formatTime = (value: any) => {
   if (!value) return "-";
@@ -37,6 +63,7 @@ const NODE_STATUS_VIEW: Record<string, { text: string; tone: string; dot: string
   processing: { text: "审批中", tone: "primary", dot: "is-primary" },
   pending: { text: "待审批", tone: "warning", dot: "is-warning" },
   rejected: { text: "已驳回", tone: "danger", dot: "is-danger" },
+  returned: { text: "已退回", tone: "warning", dot: "is-warning" },
   cancelled: { text: "已取消", tone: "info", dot: "is-muted" },
   canceled: { text: "已取消", tone: "info", dot: "is-muted" },
   skipped: { text: "已跳过", tone: "info", dot: "is-muted" }
@@ -47,6 +74,7 @@ const ASSIGNEE_STATUS: Record<string, { text: string; type: any }> = {
   running: { text: "审批中", type: "primary" },
   approved: { text: "已同意", type: "success" },
   rejected: { text: "已驳回", type: "danger" },
+  returned: { text: "已退回", type: "warning" },
   skipped: { text: "已跳过", type: "info" },
   transferred: { text: "已转交", type: "info" },
   cancelled: { text: "已取消", type: "info" },
@@ -82,6 +110,12 @@ const sortedAssignees = (node: any) => {
 const attachmentUrl = (file: any) => getAttachmentUrl(file);
 const attachmentName = (file: any) =>
   file?.fileName || file?.name || "附件";
+
+/** 附件点击走应用内离线预览（能预览与否、用哪种方式由后端判定） */
+function onPreview(file: any) {
+  if (previewAttachment(file)) return;
+  message("附件地址不可用", { type: "error" });
+}
 
 const approveTypeLabelOf = (type: string) => APPROVE_TYPE_TEXT[type] ?? "";
 
@@ -259,13 +293,15 @@ const nodeTypeLabel = (node: any) =>
               v-if="assignee.attachments?.length"
               class="app-timeline__attachments"
             >
-              <a
+              <div
                 v-for="file in assignee.attachments"
                 :key="file.fileId || file.fileName"
                 class="app-timeline__attachment"
-                :href="attachmentUrl(file)"
-                target="_blank"
-                rel="noopener"
+                role="button"
+                tabindex="0"
+                title="点击预览"
+                @click="onPreview(file)"
+                @keydown.enter.prevent="onPreview(file)"
               >
                 <el-image
                   v-if="isImageFile(file)"
@@ -277,7 +313,17 @@ const nodeTypeLabel = (node: any) =>
                 <span class="app-timeline__attachment-name">
                   {{ attachmentName(file) }}
                 </span>
-              </a>
+                <a
+                  class="app-timeline__attachment-dl"
+                  :href="attachmentUrl(file)"
+                  target="_blank"
+                  rel="noopener"
+                  title="下载"
+                  @click.stop
+                >
+                  <AppIcon icon="ep:download" :size="13" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -285,6 +331,29 @@ const nodeTypeLabel = (node: any) =>
         <p v-else class="app-timeline__empty">
           {{ node.nodeType === "cc" ? "暂无抄送人信息" : "暂无审批人信息" }}
         </p>
+      </div>
+    </div>
+
+    <!-- 动作记录：加签 / 退回 / 重新提交 -->
+    <div v-if="actionLogs.length" class="app-timeline__logs">
+      <div class="app-timeline__logs-title">操作记录</div>
+      <div
+        v-for="log in actionLogs"
+        :key="log.id || log.createdAt"
+        class="app-timeline__log"
+      >
+        <el-tag size="small" effect="plain" type="info">
+          {{ actionText(log.action) }}
+        </el-tag>
+        <span class="app-timeline__log-operator">
+          {{ log.operatorName || "系统" }}
+        </span>
+        <span class="app-timeline__log-time">
+          {{ formatTime(log.createdAt) }}
+        </span>
+        <div v-if="log.comment" class="app-timeline__log-comment">
+          {{ log.comment }}
+        </div>
       </div>
     </div>
   </div>
@@ -461,9 +530,18 @@ const nodeTypeLabel = (node: any) =>
     padding: 4px 8px;
     font-size: var(--app-font-12);
     color: var(--app-text-2);
+    cursor: pointer;
     background: var(--app-subtle);
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-xs);
+    transition:
+      color var(--app-duration-fast),
+      border-color var(--app-duration-fast);
+
+    &:hover {
+      color: var(--app-primary);
+      border-color: var(--app-primary);
+    }
   }
 
   &__attachment-thumb {
@@ -473,14 +551,63 @@ const nodeTypeLabel = (node: any) =>
   }
 
   &__attachment-name {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  /* 预览与下载分离：默认在应用内离线预览，下载仍是直链 */
+  &__attachment-dl {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    color: var(--app-text-4);
+
+    &:hover {
+      color: var(--app-primary);
+    }
+  }
+
   &__empty {
     font-size: var(--app-font-13);
     color: var(--app-text-4);
+  }
+
+  /* 动作记录（加签/退回/重新提交）：不属于流程节点，单独成块 */
+  &__logs {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px dashed var(--app-border);
+  }
+
+  &__logs-title {
+    margin-bottom: 8px;
+    font-size: var(--app-font-12);
+    color: var(--app-text-3);
+  }
+
+  &__log {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-size: var(--app-font-12);
+    color: var(--app-text-2);
+
+    & + & {
+      margin-top: 6px;
+    }
+  }
+
+  &__log-time {
+    color: var(--app-text-4);
+  }
+
+  &__log-comment {
+    flex-basis: 100%;
+    color: var(--app-text-3);
   }
 
   &__count {

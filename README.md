@@ -1,12 +1,14 @@
 # GO云启 OA · 协同办公前端
 
-面向政企/中小团队的协同办公前端，基于 **Vue 3 + Vite + Element Plus** 二次定制，覆盖工作台看板、审批工作流、流程/表单设计器、组织人事、系统权限、数据字典、系统参数、租户运营、公告管理、知识库与审计日志。
+面向政企/中小团队的协同办公前端，基于 **Vue 3 + Vite + Element Plus** 二次定制，覆盖工作台看板、审批工作流（加签 / 退回 / 会签）、流程/表单设计器、组织人事、系统权限、应用中心与插件开关、系统参数、租户运营、公告管理、知识库、审计日志与附件离线预览。
 
 - 设计语言：飞书式交互 + 政企配色，双栏导航（一级图标栏 + 二级菜单面板）
 - 多标签页、动态路由、按钮级权限、状态字典全量中文化
-- 复杂审批：串行 / 会签 / 或签 / 条件分支 / 抄送 / 附件
-- 知识库：企业文档与个人文件分类归档，图片缩略图网格与全屏预览，文档跳 Office 在线预览
-- 面向 SaaS：租户用量与账号配额可视化，平台管理员可切换租户视角
+- 复杂审批：串行 / 会签 / 或签 / 条件分支 / 抄送 / **前加签与后加签** / **退回发起人或指定节点** / 退回后重新提交
+- 附件：**不依赖外网 Office** 的离线预览（PDF 本地渲染 + 文本层检索）、图片相册、其余格式给出明确降级
+- 知识库：企业文档与个人文件分类归档，支持**按附件正文检索**并高亮片段
+- 安全底座：策略外置（密码/锁定/验证码/会话）、登录与操作日志**哈希链完整性校验**、附件签名访问
+- 面向 SaaS：应用中心按租户开通、租户用量与账号配额可视化，平台管理员可切换租户视角
 
 > **说明**：本仓库**只包含前端**。后端服务不随仓库提供，前端只依赖稳定的 HTTP 契约，见 [后端对接](#后端对接)。截图数据来自本地演示环境。
 
@@ -53,6 +55,26 @@
 | --- | --- |
 | ![知识库](docs/screenshots/10-kb-library.png) | ![图片预览](docs/screenshots/11-kb-preview.png) |
 
+| 应用中心（按租户开通） | 插件管理（停用即拒绝接口） |
+| --- | --- |
+| ![应用中心](docs/screenshots/12-appcenter.png) | ![插件管理](docs/screenshots/13-plugin-manage.png) |
+
+| 系统参数 · 安全策略 | 审计日志 · 哈希链校验 |
+| --- | --- |
+| ![系统参数](docs/screenshots/14-security-config.png) | ![完整性校验](docs/screenshots/15-audit-verify.png) |
+
+| 菜单管理 · 图标选择器 | 知识库 · 附件正文检索 |
+| --- | --- |
+| ![图标选择器](docs/screenshots/16-menu-icon-picker.png) | ![正文检索](docs/screenshots/20-kb-search.png) |
+
+| 审批详情 · 加签 / 退回 | 加签弹窗（前加签 / 后加签） |
+| --- | --- |
+| ![审批动作](docs/screenshots/17-approval-actions.png) | ![加签弹窗](docs/screenshots/18-approval-addsign.png) |
+
+| 退回后 · 发起人重新提交（沿用原单号） |
+| --- |
+| ![退回状态](docs/screenshots/19-approval-returned.png) |
+
 ---
 
 ## 功能特性
@@ -69,6 +91,8 @@
 - 审批中心采用「收件箱」布局：左侧按时间分组卡片 + 右侧内联预览，支持不打开弹窗直接审批
 - 六类视图：我发起的 / 我待办的 / 我已办的 / 抄送给我的 / 已通过 / 已取消
 - 审批详情抽屉：流程时间轴（节点类型、会签/或签/串行、审批人与状态、节点耗时）、评论与附件、打印、撤销、重新发起
+- **审批动作**：加签（前加签 / 后加签）、退回（发起人 / 上一步 / 指定节点）、退回后重新提交（沿用原单号）
+- 任意一人审批（或签）节点不支持加签：按钮置灰并给出原因，后端同样拒绝
 - 发起审批：表单填写 + 审批人/抄送人调整 + 本地草稿
 
 **流程与表单设计**
@@ -83,16 +107,26 @@
 **知识库 / 资料库**
 - 左侧分类树 + 右侧文档列表，企业文档全员可见、个人文件仅本人可见
 - 文档封面取首个图片附件，列表以方形缩略图展示；详情附件区图片为缩略图网格，点击调用 `el-image` 全屏预览（支持左右切换、缩放）
-- 文档附件复用统一签名机制：长期只存 fileId，展示时按 fileId 换取签名地址；Office 文档跳在线预览、PDF 直开、其余走下载
+- 文档附件统一存 `fileId`，展示时换取签名地址；**预览方式由后端判定**：图片走相册、PDF 本地渲染、其余格式弹窗说明并给出下载
+- PDF 预览内置文本层：可选中复制、按关键词高亮、上一处/下一处跳转；pdf.js 与 worker 全部本地打包（无 CDN）
+- 知识库支持**搜正文**：关键词命中附件内容时返回片段并高亮，适合扫描件以外的合同/通知类文档
 - 分类管理：树形上级选择、按归属范围（企业 / 个人）划分，删除前校验无子分类与无文档
 - 菜单 / 分类等图标字段统一使用 `AppIconPicker`（从已注册图标中搜索挑选，避免手输字符串导致图标不渲染）
 
 **平台能力**
+- 应用中心：按租户展示已开通 / 可开通应用，核心应用不可停用；停用后菜单不再下发、接口直接拒绝
+- 插件管理：平台应用目录与各租户开通状态（来源为代码注册表，新增应用自动出现在这里）
 - 数据字典：左列表右字典项，内置枚举只读、业务字典可视化维护；`useDict(code)` 供页面按编码取用
 - 系统参数：按分组维护站点信息、安全策略、附件限制与审批规则，支持整组批量保存
 - 租户运营：租户列表 / 开通 / 编辑 / 切换租户视角，用量抽屉展示账号配额与存储占用
 - 公告管理：部门树多选发布、送达与已读统计、撤回（联动清理已下发通知）、详情抽屉
 - 数据导出：审批实例、登录日志、操作日志、员工花名册，按当前筛选条件导出 Excel
+
+**安全与审计**
+- 策略外置：验证码开关与失败阈值、密码规则与有效期、登录锁定、并发会话数、审计链算法均在后端参数里，前端只按接口返回行事
+- 登录安全：算术验证码（可开关）、连续失败锁定、首次登录 / 密码过期引导改密
+- 审计完整性：登录日志与操作日志支持**哈希链校验**，页面直接展示校验结果与断链位置
+- 附件访问：签名地址带时效（默认 15 分钟），`/files` 静态直读已关闭；业务数据只存 `fileId`
 
 **交互与工程**
 - 动态路由（后端菜单驱动）、多标签页（右键菜单）、面包屑、全局搜索（Ctrl K）、消息中心
@@ -114,6 +148,7 @@
 | 流程图 | @vue-flow/core + background + controls + minimap |
 | 样式 | SCSS + CSS 变量设计令牌 + Tailwind 3（少量工具类） |
 | 图标 | @iconify/vue 离线注册表（ep / ri / fa-solid） |
+| 附件预览 | pdfjs-dist 6（**legacy 构建**，主包与 worker 均本地打包，兼容旧内核） |
 | 工具 | dayjs、lodash-es、qs、js-cookie、nprogress、@vueuse/core |
 
 ---
@@ -160,8 +195,9 @@ new-web
 │  ├─ components
 │  │  ├─ app/                 # App* 基础组件（页面容器/表格/表单弹窗/状态标签/图标选择器…）
 │  │  ├─ charts/              # SVG 图表（趋势/环形/条形）
+│  │  ├─ file/                # FilePreview：统一附件离线预览（pdf.js）
 │  │  └─ workflow/            # 审批领域组件（详情/时间轴/表单渲染/附件…）
-│  ├─ composables/            # useTable（列表分页）/ usePermission
+│  ├─ composables/            # useTable（列表分页）/ useFilePreview（预览宿主）/ usePermission
 │  ├─ directives/             # v-auth / v-perms / v-copy
 │  ├─ layout/                 # 布局：双栏导航、导航栏、多标签、主区域
 │  ├─ router/                 # 静态路由 + 后端菜单转动态路由
@@ -169,11 +205,12 @@ new-web
 │  ├─ styles/                 # 设计令牌、Element Plus 覆盖、布局与工具类
 │  ├─ utils/                  # http、dicts/dictStore、export、workflow、storage…
 │  └─ views/                  # 页面（路径与后端菜单 component 一一对应）
-│     ├─ system/              # user / role / menu / permission / dict / config / tenant / announcement
+│     ├─ system/              # user / role / menu / permission / dict / config / tenant / announcement / plugin
 │     ├─ engine/              # workflow / instance / designer / form
 │     ├─ hr/                  # dept / position / employee / invite / contacts
 │     ├─ kb/                  # 文档库 / 分类管理
-│     └─ log/                 # login / operation
+│     ├─ appcenter/           # 应用中心（按租户开通）
+│     └─ log/                 # login / operation（含哈希链校验）
 ├─ nginx.conf                 # 生产部署参考
 ├─ doc.md                     # 开发记录与验收说明
 └─ vite.config.ts
@@ -211,14 +248,18 @@ new-web
 | GET | `/workflow/task/my-pending` / `my-completed` | 待办 / 已办 |
 | GET | `/workflow/cc/my-list` | 抄送给我的 |
 | GET | `/workflow/instance/{id}` | 实例详情（含 `processTimeline`） |
-| GET | `/workflow/instance/{id}/permission` | 当前用户对该单的权限（`canApprove` 等） |
+| GET | `/workflow/instance/{id}/permission` | 当前用户对该单的权限（`canApprove / canAddSign / canReturn / canResubmit`、`pendingTaskId`、`pendingApproveType`） |
 | POST | `/workflow/task/{taskId}/approve` / `reject` | 同意 / 拒绝 |
+| POST | `/workflow/task/{taskId}/add-sign` | 加签：`{ signType: before\|after, addSignerIds, comment }` |
+| POST | `/workflow/task/{taskId}/return` | 退回：`{ returnType: initiator\|previous\|specified, returnTo?, comment }` |
+| POST | `/workflow/instance/{instanceId}/resubmit` | 退回后重新提交（仅发起人）：`{ formData }` |
 | POST | `/workflow/instance/cancel` | 撤销 |
 
 审批节点约定：
 - `approveType`：`ORDER_SIGN`（串行）/ `ALL_SIGN`（会签）/ `ANY_SIGN`（或签）
-- 实例状态仅 `running / approved / rejected / cancelled`
-- 节点级"部分完成"由任务状态表达，不要新增实例状态
+- 实例状态：`running / approved / rejected / cancelled / returned`（`returned` = 已退回发起人，等待修改后重新提交）
+- 节点级"部分完成"由任务状态表达，不要新增实例状态；退回时旧任务行置 `returned` 保留审计痕迹
+- 加签仅对会签/串行节点开放；或签节点一人通过即完成，加签没有语义，后端会拒绝
 
 ### 平台能力
 
@@ -243,6 +284,10 @@ new-web
 | PUT | `/sys/tenant/{id}` | 编辑租户（停用会作废该租户会话） |
 | POST | `/sys/tenant/{id}/switch` | 切换租户视角（返回新 token，前端需重新登录态） |
 | GET | `/sys/tenant/usage` | 用量与配额（不传 `tenantId` 即当前租户） |
+| GET | `/sys/plugin/list` | 平台应用目录 + 各租户开通状态（平台管理员） |
+| GET | `/sys/plugin/mine` | 当前租户可用应用（应用中心） |
+| PUT | `/sys/plugin/{code}/status` | 按租户开通 / 停用应用 |
+| POST | `/sys/log/verify` | 审计哈希链校验：`{ type: login\|operation, ... }`，返回是否断链与断链位置 |
 
 ### 知识库
 
@@ -275,6 +320,17 @@ new-web
 ### 附件
 
 上传 `POST /common/file/upload` 返回 `data.file.{ id, fileName, fileUrl, fileSize, fileType }`。
+
+**预览与检索（新增）**：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/common/file/{id}/preview` | 预览元信息：`kind`（image/pdf/none）、`previewable`、`previewUrl`、`downloadUrl`、`message`、`textStatus` |
+| POST | `/common/file/text-search` | 附件正文检索：`{ keyword, fileIds }`，需管理员类权限（普通用户走知识库入口） |
+| GET | `/kb/doc/search` | 知识库正文检索：内部按可见范围收敛候选 fileId，返回命中片段 |
+
+前端约定：能不能预览、用什么方式预览完全以 `/preview` 返回为准，不在前端按扩展名猜；
+PDF 已在本地渲染（`FilePreview.vue`，pdf.js legacy 构建），其余格式显示后端给的降级文案并提供下载。
 
 **访问约定（重要）**：
 
@@ -312,6 +368,10 @@ new-web
    新增/改名时请同步核对（超管因 `*:*:*` 不受影响，容易漏测）。
 9. 前端隐藏按钮不等于授权：高风险操作（改系统参数、删日志、批量导出、发公告）后端同样会校验权限码，
    前端只需保证体验一致，不要把权限当成安全边界。
+10. **状态字典要收录后端新增值**：例如退回引入的 `returned`，漏收录会让时间轴与列表显示“未知状态”；
+   新增状态时必须同步 `utils/dicts.ts`（Web）与 `utils/dict.js`（移动端）。
+11. **通用能力只保留一个宿主**：附件预览挂在布局根组件，其他页面调 `previewAttachment`，
+   不要每页各挂一份弹窗；能力上线前用全局检索盘点全部旧调用点（`window.open`、外链域名、`<a href>`）。
 
 ---
 
@@ -335,7 +395,9 @@ new-web
 | 职位 | `hr:post:add` / `edit` / `delete` |
 | 员工 | `hr:employee:add` / `edit` / `delete` / `account`（分配账号） |
 | 邀请码 | `hr:invite:add` / `edit` / `delete` |
-| 日志 | `system:login:delete`、`system:operation:delete` |
+| 日志 | `system:login:delete`、`system:operation:delete`、`sys:log:verify`（完整性校验） |
+| 应用/插件 | `sys:plugin:list` / `status` / `config` |
+| 附件检索 | `sys:file:search`（正文检索通用入口，仅管理员类角色） |
 | 导出 | `engine:instance:export`、`system:login:export`、`system:operation:export`、`hr:employee:export` |
 
 超管拥有 `*:*:*` 时前端 `hasAuth` 直接放行，因此**用超管账号测不出权限码写错**，
@@ -375,6 +437,17 @@ pnpm build
 **非超管账号看不到某个按钮？**
 先比对 [权限码对照](#权限码对照) 里的编码与后端权限目录是否一致，再看角色是否勾选了该权限。
 编码写错时接口与页面都不会报错，只是永远不显示。
+
+**审批详情没有“加签 / 退回”按钮？**
+按下面顺序排查：
+1. 当前用户在该单上是否有活动待办（`permission.pendingTaskId` 非空）且实例为 `running`；
+2. 或签节点不支持加签，后端会返回 `canAddSign=false`，前端按钮置灰；
+3. 退回目标已限定为“当前节点之前且已完成”的审批节点，没有可选节点时只能退回发起人。
+
+**PDF 预览在部分电脑上打不开 / 只有空白页？**
+pdf.js 6.x 主构建使用了较新的 `Map.prototype.getOrInsertComputed`，旧内核（如 Chrome 120 以下）不支持，
+表现为“PDF 加载失败”。本项目已改用 **legacy 构建**（自带 polyfill），升级 pdfjs 时不要换回主构建；
+损坏或不加密的 PDF 会在弹窗内明确提示并提供下载入口。
 
 **接口返回 401 后整页退出？**
 http 层对 401 统一清理会话；检查 token 是否过期、后端会话是否被其他设备顶替（并发会话限制）。

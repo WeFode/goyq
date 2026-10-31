@@ -6,6 +6,7 @@ import {
   logsOperationListQuery
 } from "@/api/logOperation";
 import { hasAuth } from "@/router/utils";
+import AuditVerifyButton from "@/components/audit/AuditVerifyButton.vue";
 import { message } from "@/utils/message";
 import { downloadExcel } from "@/utils/export";
 
@@ -126,8 +127,9 @@ onMounted(load);
 </script>
 
 <template>
-  <AppPage title="操作日志" description="记录关键业务操作，用于审计与问题追溯">
+  <AppPage title="操作日志" description="记录关键业务操作，用于审计与问题追溯；开启哈希链后可校验记录是否被篡改">
     <template #actions>
+      <AuditVerifyButton type="operation" />
       <el-button
         v-if="hasAuth('system:operation:export')"
         :loading="exporting"
