@@ -159,30 +159,57 @@ function moveField(index: number, offset: number) {
   activeIndex.value = target;
 }
 
+function toProps(props: any): Record<string, any> {
+  if (props && typeof props === "object") return props;
+  // 历史或种子数据可能把字段的 props 存成 JSON 字符串，解析回对象
+  if (typeof props === "string") {
+    try {
+      const parsed = JSON.parse(props);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/** 取当前字段的 props，确保为可写对象（避免对字符串赋值报错） */
+function activeProps(): Record<string, any> | null {
+  const field = activeField.value;
+  if (!field) return null;
+  const props = toProps(field.props);
+  if (props !== field.props) field.props = props;
+  return props;
+}
+
 function addOption() {
-  if (!activeField.value) return;
-  activeField.value.props.options = [
-    ...(activeField.value.props.options ?? []),
+  const props = activeProps();
+  if (!props) return;
+  props.options = [
+    ...(Array.isArray(props.options) ? props.options : []),
     { label: "新选项", value: `option${Date.now()}` }
   ];
 }
 
 function removeOption(index: number) {
-  if (!activeField.value) return;
-  activeField.value.props.options.splice(index, 1);
+  const props = activeProps();
+  if (!props || !Array.isArray(props.options)) return;
+  props.options.splice(index, 1);
 }
 
 function addColumn() {
-  if (!activeField.value) return;
-  activeField.value.props.columns = [
-    ...(activeField.value.props.columns ?? []),
+  const props = activeProps();
+  if (!props) return;
+  props.columns = [
+    ...(Array.isArray(props.columns) ? props.columns : []),
     { prop: `col${Date.now()}`, label: "新列", width: 120 }
   ];
 }
 
 function removeColumn(index: number) {
-  if (!activeField.value) return;
-  activeField.value.props.columns.splice(index, 1);
+  const props = activeProps();
+  if (!props || !Array.isArray(props.columns)) return;
+  props.columns.splice(index, 1);
 }
 
 async function openDesigner(row: any) {
@@ -210,7 +237,12 @@ async function openDesigner(row: any) {
     } else if (rawConfig && typeof rawConfig === "object") {
       config = rawConfig;
     }
-    fields.value = Array.isArray(config?.fields) ? config.fields : [];
+    const rawFields = Array.isArray(config?.fields) ? config.fields : [];
+    // 统一把每个字段的 props 归一为对象，避免字符串 props 导致属性面板与增删选项报错
+    fields.value = rawFields.map((field: any) => ({
+      ...field,
+      props: toProps(field?.props)
+    }));
   } catch (error) {
     console.error("加载表单详情失败:", error);
   }

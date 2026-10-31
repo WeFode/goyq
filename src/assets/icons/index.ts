@@ -225,3 +225,6 @@ export function setupIcons() {
 
 /** 判断图标是否已注册 */
 export const hasIcon = (name: string) => Object.keys(icons).includes(name);
+
+/** 全部已注册的图标名（`图标集:名称`），供图标选择器等复用 */
+export const iconNames: string[] = Object.keys(icons);

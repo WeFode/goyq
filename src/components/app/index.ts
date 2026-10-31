@@ -1,6 +1,7 @@
 import type { App } from "vue";
 
 import AppIcon from "./AppIcon.vue";
+import AppIconPicker from "./AppIconPicker.vue";
 import AppPage from "./AppPage.vue";
 import AppSearchBar from "./AppSearchBar.vue";
 import AppDataTable from "./AppDataTable.vue";
@@ -17,6 +18,7 @@ import AppDetailSection from "./AppDetailSection.vue";
  */
 const components = {
   AppIcon,
+  AppIconPicker,
   AppPage,
   AppSearchBar,
   AppDataTable,
@@ -36,6 +38,7 @@ export function setupAppComponents(app: App) {
 
 export {
   AppIcon,
+  AppIconPicker,
   AppPage,
   AppSearchBar,
   AppDataTable,

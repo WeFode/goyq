@@ -125,6 +125,18 @@ export const MENU_TYPE: Record<string, string> = {
   "3": "按钮"
 };
 
+/** 知识库归属范围 */
+export const KB_SCOPE: Record<string, DictMeta> = {
+  company: { text: "企业文档", type: "primary", dot: true },
+  personal: { text: "个人文件", type: "info", dot: true }
+};
+
+/** 知识库文档状态 */
+export const KB_DOC_STATUS: Record<string, DictMeta> = {
+  "1": { text: "正常", type: "success", dot: true },
+  "2": { text: "已归档", type: "info", dot: true }
+};
+
 export const UNKNOWN_TEXT = "未知状态";
 
 /** 取字典元信息，未命中时返回兜底元信息（不展示英文原文） */

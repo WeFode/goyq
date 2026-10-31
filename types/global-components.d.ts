@@ -5,6 +5,7 @@
 declare module "vue" {
   export interface GlobalComponents {
     AppIcon: (typeof import("../src/components/app"))["AppIcon"];
+    AppIconPicker: (typeof import("../src/components/app"))["AppIconPicker"];
     AppPage: (typeof import("../src/components/app"))["AppPage"];
     AppSearchBar: (typeof import("../src/components/app"))["AppSearchBar"];
     AppDataTable: (typeof import("../src/components/app"))["AppDataTable"];

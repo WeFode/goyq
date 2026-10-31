@@ -316,7 +316,7 @@ onMounted(load);
           </el-col>
           <el-col :span="12">
             <el-form-item label="菜单图标">
-              <el-input v-model="form.icon" placeholder="如 ep:setting" clearable />
+              <AppIconPicker v-model="form.icon" />
             </el-form-item>
           </el-col>
           <el-col :span="12">

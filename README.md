@@ -1,10 +1,11 @@
 # GO云启 OA · 协同办公前端
 
-面向政企/中小团队的协同办公前端，基于 **Vue 3 + Vite + Element Plus** 二次定制，覆盖工作台看板、审批工作流、流程/表单设计器、组织人事、系统权限、数据字典、系统参数、租户运营、公告管理与审计日志。
+面向政企/中小团队的协同办公前端，基于 **Vue 3 + Vite + Element Plus** 二次定制，覆盖工作台看板、审批工作流、流程/表单设计器、组织人事、系统权限、数据字典、系统参数、租户运营、公告管理、知识库与审计日志。
 
 - 设计语言：飞书式交互 + 政企配色，双栏导航（一级图标栏 + 二级菜单面板）
 - 多标签页、动态路由、按钮级权限、状态字典全量中文化
 - 复杂审批：串行 / 会签 / 或签 / 条件分支 / 抄送 / 附件
+- 知识库：企业文档与个人文件分类归档，图片缩略图网格与全屏预览，文档跳 Office 在线预览
 - 面向 SaaS：租户用量与账号配额可视化，平台管理员可切换租户视角
 
 > **说明**：本仓库**只包含前端**。后端服务不随仓库提供，前端只依赖稳定的 HTTP 契约，见 [后端对接](#后端对接)。截图数据来自本地演示环境。
@@ -48,6 +49,10 @@
 | --- | --- |
 | ![个人中心](docs/screenshots/08-profile.png) | ![登录页](docs/screenshots/09-login.png) |
 
+| 知识库 · 文档库（封面缩略图） | 知识库 · 图片全屏预览 |
+| --- | --- |
+| ![知识库](docs/screenshots/10-kb-library.png) | ![图片预览](docs/screenshots/11-kb-preview.png) |
+
 ---
 
 ## 功能特性
@@ -74,6 +79,13 @@
 - 系统管理：用户、角色（菜单授权 / 权限授权）、菜单（树形）、权限、日志（登录 / 操作）
 - 人事：部门组织树、职位、邀请码、员工档案、通讯录
 - 账号安全：登录会话控制、个人资料、头像上传、修改密码
+
+**知识库 / 资料库**
+- 左侧分类树 + 右侧文档列表，企业文档全员可见、个人文件仅本人可见
+- 文档封面取首个图片附件，列表以方形缩略图展示；详情附件区图片为缩略图网格，点击调用 `el-image` 全屏预览（支持左右切换、缩放）
+- 文档附件复用统一签名机制：长期只存 fileId，展示时按 fileId 换取签名地址；Office 文档跳在线预览、PDF 直开、其余走下载
+- 分类管理：树形上级选择、按归属范围（企业 / 个人）划分，删除前校验无子分类与无文档
+- 菜单 / 分类等图标字段统一使用 `AppIconPicker`（从已注册图标中搜索挑选，避免手输字符串导致图标不渲染）
 
 **平台能力**
 - 数据字典：左列表右字典项，内置枚举只读、业务字典可视化维护；`useDict(code)` 供页面按编码取用
@@ -146,7 +158,7 @@ new-web
 │  ├─ api/                    # 接口层（按业务域拆分，路径与后端一一对应）
 │  ├─ assets/icons/           # iconify 离线图标注册表
 │  ├─ components
-│  │  ├─ app/                 # App* 基础组件（页面容器/表格/表单弹窗/状态标签…）
+│  │  ├─ app/                 # App* 基础组件（页面容器/表格/表单弹窗/状态标签/图标选择器…）
 │  │  ├─ charts/              # SVG 图表（趋势/环形/条形）
 │  │  └─ workflow/            # 审批领域组件（详情/时间轴/表单渲染/附件…）
 │  ├─ composables/            # useTable（列表分页）/ usePermission
@@ -160,6 +172,7 @@ new-web
 │     ├─ system/              # user / role / menu / permission / dict / config / tenant / announcement
 │     ├─ engine/              # workflow / instance / designer / form
 │     ├─ hr/                  # dept / position / employee / invite / contacts
+│     ├─ kb/                  # 文档库 / 分类管理
 │     └─ log/                 # login / operation
 ├─ nginx.conf                 # 生产部署参考
 ├─ doc.md                     # 开发记录与验收说明
@@ -231,6 +244,21 @@ new-web
 | POST | `/sys/tenant/{id}/switch` | 切换租户视角（返回新 token，前端需重新登录态） |
 | GET | `/sys/tenant/usage` | 用量与配额（不传 `tenantId` 即当前租户） |
 
+### 知识库
+
+企业文档全员可见、个人文件仅本人可见；附件复用签名地址机制，业务侧只存 fileId。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/kb/category/list` | 分类列表（平铺，前端按 `parentId` 组树） |
+| POST / PUT / DELETE | `/kb/category`、`/kb/category/{id}` | 分类增删改（仅管理员） |
+| GET | `/kb/doc/list` | 文档列表（`page/pageSize/keyword/categoryId/scope/mine`，返回 `cover` 封面签名地址） |
+| GET | `/kb/doc/{id}` | 文档详情（含 `attachments` 签名地址） |
+| POST / PUT / DELETE | `/kb/doc`、`/kb/doc/{id}` | 文档增删改（`fileIds` 绑定已上传附件） |
+| POST | `/kb/doc/{id}/publish` | 发布到企业库（需 `kb:doc:publish`） |
+| POST | `/kb/doc/{id}/archive` | 归档 / 取消归档 |
+| POST | `/kb/doc/{id}/view` / `download` | 浏览 / 下载计数（download 返回签名地址） |
+
 ### 数据导出
 
 导出接口直接返回 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` 文件流，
@@ -275,7 +303,7 @@ new-web
 2. 路由 `name` 与页面组件 `name` 必须一致，否则多标签缓存（keep-alive）失效。
 3. 接口统一走 `src/api/*`，不要在页面里裸写 axios 路径（导出例外，见 `utils/export.ts`）。
 4. 状态/枚举统一在 `src/utils/dicts.ts` 维护，禁止把后端英文码直接渲染；业务枚举用 `useDict(code)`。
-5. 新增页面优先复用 `AppPage`、`AppSearchBar`、`AppDataTable`、`AppFormDialog`、`AppFormDrawer`。
+5. 新增页面优先复用 `AppPage`、`AppSearchBar`、`AppDataTable`、`AppFormDialog`、`AppFormDrawer`；图标字段用 `AppIconPicker`，不要手输图标字符串。
 6. **树形选择必须设置 `node-key`**：`el-tree-select` 开启 `show-checkbox` 后，勾选值的收集依赖 `node-key`，
    缺失时 `v-model` 会拿到 `[null]`（表现为标签空白、提交后提示未选择）。同理 `el-tree` 取值也要设。
 7. **文件类字段不落库访问地址**：头像、附件一律存 `fileId`，展示时用接口返回的签名地址，
@@ -302,6 +330,7 @@ new-web
 | 租户 | `sys:tenant:add` / `edit` / `switch` |
 | 公告 | `sys:announcement:publish` / `withdraw` / `delete` |
 | 流程 / 表单 | `engine:workflow:add` / `edit` / `delete`、`engine:form:add` / `edit` / `delete` |
+| 知识库 | `kb:category:add` / `edit` / `delete`、`kb:doc:add` / `edit` / `delete` / `publish` |
 | 部门 | `hr:dept:add` / `edit` / `delete` |
 | 职位 | `hr:post:add` / `edit` / `delete` |
 | 员工 | `hr:employee:add` / `edit` / `delete` / `account`（分配账号） |
