@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import type { FormInstance } from "element-plus";
 import { message } from "@/utils/message";
-import { loginRules, applyRules } from "./utils/rule";
+import { createLoginRules, applyRules } from "./utils/rule";
 import { useUserStoreHook } from "@/store/modules/user";
 import { useSettingStoreHook } from "@/store/modules/settings";
 import { initRouter, getTopMenu } from "@/router/utils";
@@ -43,7 +43,13 @@ const captcha = reactive({
   lockRemainSeconds: 0
 });
 
-async function refreshCaptcha() {
+// 取码时的账号指纹。失败次数是按账号统计的，换了账号必须重新取码，
+// 否则会出现「上一个账号还不需要验证码，当前这个已被锁定/需要验证码却看不见输入框」。
+let captchaSubject = "";
+const subjectOf = () => `${ruleForm.tenantCode}|${ruleForm.username}`;
+
+async function refreshCaptcha(force = true) {
+  if (!force && captchaSubject === subjectOf()) return;
   try {
     const res: any = await getCaptcha({
       username: ruleForm.username || undefined,
@@ -54,12 +60,28 @@ async function refreshCaptcha() {
     captcha.captchaId = data.captchaId || "";
     captcha.image = data.image || "";
     captcha.lockRemainSeconds = data.lockRemainSeconds || 0;
+    captchaSubject = subjectOf();
     if (!captcha.required) ruleForm.captchaCode = "";
   } catch {
     // 验证码接口异常不阻断登录页；提交时后端仍会按策略拦截
     captcha.required = false;
+    captcha.image = "";
   }
 }
+
+/** 账号/企业编码变化后按需重新判定（已有验证码不重复刷新） */
+function onAccountBlur() {
+  refreshCaptcha(false);
+}
+
+/** 锁定提示：让用户在提交前就知道还要等多久，而不是反复试错 */
+const lockHint = computed(() => {
+  if (captcha.lockRemainSeconds <= 0) return "";
+  return `账号已被临时锁定，请在约 ${Math.ceil(captcha.lockRemainSeconds / 60)} 分钟后重试`;
+});
+
+/** 验证码为空时本地先拦一道；是否需要填由 getter 在校验时实时取后端结论 */
+const loginRules = createLoginRules(() => captcha.required);
 
 const applyForm = reactive({
   inviteCode: "",
@@ -403,6 +425,7 @@ onBeforeUnmount(() => {
               v-model="ruleForm.tenantCode"
               placeholder="默认 default，可留空"
               clearable
+              @blur="onAccountBlur"
             >
               <template #prefix>
                 <AppIcon icon="ep:office-building" :size="15" />
@@ -415,6 +438,7 @@ onBeforeUnmount(() => {
               v-model="ruleForm.username"
               placeholder="请输入账号"
               clearable
+              @blur="onAccountBlur"
             >
               <template #prefix>
                 <AppIcon icon="ep:user" :size="15" />
@@ -453,10 +477,23 @@ onBeforeUnmount(() => {
                 alt="图形验证码，点击重新获取"
                 class="login__captcha-img"
                 title="看不清？点击换一张"
-                @click="refreshCaptcha"
+                @click="refreshCaptcha(true)"
               />
+              <button
+                v-else
+                type="button"
+                class="login__captcha-get"
+                @click="refreshCaptcha(true)"
+              >
+                获取验证码
+              </button>
             </div>
           </el-form-item>
+
+          <div v-if="lockHint" class="login__hint">
+            <AppIcon icon="ep:warning-filled" :size="14" />
+            {{ lockHint }}
+          </div>
 
           <div class="login__options">
             <el-checkbox v-model="rememberPassword">记住密码</el-checkbox>
@@ -970,6 +1007,29 @@ onBeforeUnmount(() => {
     background: #f2f5fb;
     border: 1px solid var(--app-border);
     border-radius: 6px;
+  }
+
+  // 取码失败时的兜底入口：不能让输入框孤立地停在页面上
+  &__captcha-get {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+    color: var(--app-primary);
+    cursor: pointer;
+    background: #f2f5fb;
+    border: 1px dashed var(--app-border);
+    border-radius: 6px;
+  }
+
+  // 锁定提示：预留出验证码行错字（绝对定位）的高度，避免两行文字重叠
+  &__hint {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin: 18px 0 10px;
+    font-size: 12px;
+    color: #b45309;
   }
 
   &__link {

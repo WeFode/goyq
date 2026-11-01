@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import {
+  ensureSignedUrl,
+  refreshSignedUrl,
+  signedFileIdOf
+} from "@/composables/useSignedFile";
 
 /**
  * 用户头像：有头像时展示图片，否则展示姓名首字色块
@@ -51,23 +56,49 @@ const sizeStyle = computed(() => ({
   borderRadius: props.circle ? "50%" : "var(--app-radius-sm)"
 }));
 
-/** 头像加载失败时回退为首字色块，避免列表出现破图 */
+/**
+ * 头像地址也是带时效的签名地址（登录时签发，可能已在本地存了几十分钟）。
+ * 这里不直接用它渲染：先预检、不足时效就静默续签，加载失败再强制换一次，
+ * 两次都不成才回退首字色块——既不会破图，也不会因为一个过期地址丢掉头像。
+ */
+const url = ref(props.avatar);
 const imageFailed = ref(false);
-watch(
-  () => props.avatar,
-  () => (imageFailed.value = false)
-);
-const showImage = computed(() => !!props.avatar && !imageFailed.value);
+let retried = false;
+
+async function ensure() {
+  url.value = props.avatar;
+  imageFailed.value = false;
+  retried = false;
+  if (!props.avatar) return;
+  url.value = await ensureSignedUrl(props.avatar);
+}
+
+async function onError() {
+  if (!retried && signedFileIdOf(url.value)) {
+    retried = true;
+    const fresh = await refreshSignedUrl(url.value);
+    if (fresh && fresh !== url.value) {
+      url.value = fresh;
+      return;
+    }
+  }
+  imageFailed.value = true;
+}
+
+onMounted(ensure);
+watch(() => props.avatar, ensure);
+
+const showImage = computed(() => !!url.value && !imageFailed.value);
 </script>
 
 <template>
   <img
     v-if="showImage"
-    :src="avatar"
+    :src="url"
     class="app-avatar"
     :style="sizeStyle"
     alt=""
-    @error="imageFailed = true"
+    @error="onError"
   />
   <span v-else class="app-avatar app-avatar--text" :style="sizeStyle">
     {{ text }}

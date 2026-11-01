@@ -487,9 +487,9 @@ onMounted(() => {
         >
           <el-table-column label="封面" width="72" align="center">
             <template #default="{ row }">
-              <el-image
+              <AppSignedImage
                 v-if="row.cover"
-                :src="row.cover"
+                :file="row.cover"
                 fit="cover"
                 class="kb__cover"
                 @click="openDetail(row)"
@@ -681,10 +681,10 @@ onMounted(() => {
           <div v-if="detail.attachments?.length" class="kb__attachments">
             <!-- 图片：缩略图网格，点击全屏预览 -->
             <div v-if="imageAttachments.length" class="kb__thumbs">
-              <el-image
+              <AppSignedImage
                 v-for="(att, index) in imageAttachments"
                 :key="att.id"
-                :src="att.url"
+                :file="att"
                 :preview-src-list="imagePreviewList"
                 :initial-index="index"
                 fit="cover"

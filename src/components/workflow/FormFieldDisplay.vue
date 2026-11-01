@@ -8,7 +8,8 @@ import {
   getFileIcon,
   isImageFile
 } from "@/utils/workflow";
-import { previewAttachment } from "@/composables/useFilePreview";
+import { previewAttachment, getAttachmentFileId } from "@/composables/useFilePreview";
+import { openSignedFile } from "@/composables/useSignedFile";
 import { message } from "@/utils/message";
 
 /**
@@ -126,19 +127,11 @@ function previewFile(file: any) {
   message("文件地址无效", { type: "error" });
 }
 
-function downloadFile(file: any) {
-  const url = fileUrl(file);
-  if (!url) {
-    message("文件地址无效", { type: "error" });
+async function downloadFile(file: any) {
+  // 页面可能已经开着超过签名时效，点击时先确保地址可用，不让人下到一半拿到过期链
+  if (await openSignedFile(file, { mode: "download", fileName: fileName(file) }))
     return;
-  }
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName(file);
-  link.target = "_blank";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  message("文件地址无效", { type: "error" });
 }
 
 /* ============ 表格字段 ============ */
@@ -206,11 +199,15 @@ const isUploadType = computed(() =>
 
     <!-- 附件 / 图片 -->
     <div v-else-if="isUploadType && files.length" class="app-field-display__files">
-      <div v-for="file in files" :key="fileUrl(file) || fileName(file)" class="app-field-display__file">
-        <el-image
+      <div
+        v-for="file in files"
+        :key="getAttachmentFileId(file) || fileName(file)"
+        class="app-field-display__file"
+      >
+        <AppSignedImage
           v-if="isImageFile(file) && fileUrl(file)"
           class="app-field-display__thumb"
-          :src="fileUrl(file)"
+          :file="file"
           :preview-src-list="imagePreviewList"
           :initial-index="
             imagePreviewList.findIndex(src => src === fileUrl(file))

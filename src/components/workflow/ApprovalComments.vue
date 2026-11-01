@@ -5,6 +5,7 @@ import { addInstanceComment } from "@/api/workflow";
 import { message } from "@/utils/message";
 import { getAttachmentUrl, isImageFile } from "@/utils/workflow";
 import { previewAttachment } from "@/composables/useFilePreview";
+import { openSignedFile } from "@/composables/useSignedFile";
 import AttachmentUpload, { type AttachmentInfo } from "./AttachmentUpload.vue";
 
 /** 审批评论面板：评论列表 + 新增评论（支持附件） */
@@ -51,6 +52,11 @@ const fileName = (file: any) => file?.fileName || file?.name || "附件";
 function onPreview(file: any) {
   if (previewAttachment(file)) return;
   message("附件地址不可用", { type: "error" });
+}
+
+/** 下载：点击那一刻先确认签名地址可用，过期则静默续签 */
+function downloadAttachment(file: any) {
+  void openSignedFile(file, { mode: "download", fileName: fileName(file) });
 }
 
 async function submit() {
@@ -132,10 +138,10 @@ async function submit() {
             @click="onPreview(file)"
             @keydown.enter.prevent="onPreview(file)"
           >
-            <el-image
+            <AppSignedImage
               v-if="isImageFile(file)"
               class="app-comments__thumb"
-              :src="fileUrl(file)"
+              :file="file"
               fit="cover"
             />
             <AppIcon v-else icon="ep:files" :size="14" />
@@ -146,7 +152,7 @@ async function submit() {
               target="_blank"
               rel="noopener"
               title="下载"
-              @click.stop
+              @click.prevent.stop="downloadAttachment(file)"
             >
               <AppIcon icon="ep:download" :size="13" />
             </a>

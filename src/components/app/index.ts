@@ -9,6 +9,7 @@ import AppFormDialog from "./AppFormDialog.vue";
 import AppFormDrawer from "./AppFormDrawer.vue";
 import AppStatusTag from "./AppStatusTag.vue";
 import AppUserAvatar from "./AppUserAvatar.vue";
+import AppSignedImage from "./AppSignedImage.vue";
 import AppEmpty from "./AppEmpty.vue";
 import AppDetailSection from "./AppDetailSection.vue";
 
@@ -26,6 +27,7 @@ const components = {
   AppFormDrawer,
   AppStatusTag,
   AppUserAvatar,
+  AppSignedImage,
   AppEmpty,
   AppDetailSection
 };
@@ -46,6 +48,7 @@ export {
   AppFormDrawer,
   AppStatusTag,
   AppUserAvatar,
+  AppSignedImage,
   AppEmpty,
   AppDetailSection
 };

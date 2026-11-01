@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { getAttachmentUrl, isImageFile } from "@/utils/workflow";
 import { APPROVAL_ACTION } from "@/utils/dicts";
 import { previewAttachment } from "@/composables/useFilePreview";
+import { openSignedFile } from "@/composables/useSignedFile";
 import { message } from "@/utils/message";
 
 /**
@@ -115,6 +116,11 @@ const attachmentName = (file: any) =>
 function onPreview(file: any) {
   if (previewAttachment(file)) return;
   message("附件地址不可用", { type: "error" });
+}
+
+/** 下载：点击那一刻先确认签名地址可用，过期则静默续签，不让人对着过期链报错 */
+function downloadAttachment(file: any) {
+  void openSignedFile(file, { mode: "download", fileName: attachmentName(file) });
 }
 
 const approveTypeLabelOf = (type: string) => APPROVE_TYPE_TEXT[type] ?? "";
@@ -303,10 +309,10 @@ const nodeTypeLabel = (node: any) =>
                 @click="onPreview(file)"
                 @keydown.enter.prevent="onPreview(file)"
               >
-                <el-image
+                <AppSignedImage
                   v-if="isImageFile(file)"
                   class="app-timeline__attachment-thumb"
-                  :src="attachmentUrl(file)"
+                  :file="file"
                   fit="cover"
                 />
                 <AppIcon v-else icon="ep:files" :size="14" />
@@ -319,7 +325,7 @@ const nodeTypeLabel = (node: any) =>
                   target="_blank"
                   rel="noopener"
                   title="下载"
-                  @click.stop
+                  @click.prevent.stop="downloadAttachment(file)"
                 >
                   <AppIcon icon="ep:download" :size="13" />
                 </a>

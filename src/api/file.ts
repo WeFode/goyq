@@ -35,6 +35,14 @@ export interface FileTextHit {
 }
 
 /**
+ * 获取附件基础信息（含一个**刚签发**的访问地址）。
+ * 用于签名地址过期前的静默续签；该路由属于登录用户自助范围（无需按钮权限）。
+ */
+export const fileInfoQuery = (fileId: string) => {
+  return http.request<any>("get", `/common/file/${fileId}`);
+};
+
+/**
  * 获取附件预览元信息。
  * 预览地址带时效（默认 15 分钟），过期需重新调用本接口换取，不要长期缓存。
  */

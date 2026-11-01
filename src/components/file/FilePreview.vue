@@ -12,6 +12,7 @@ import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 // legacy 构建自带这两个 API 的 shim（主包和 worker 都有），是官方支持的旧内核方案。
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 import { filePreviewQuery, type FilePreviewInfo } from "@/api/file";
+import { isSignedUrlFresh } from "@/composables/useSignedFile";
 import { message } from "@/utils/message";
 
 /**
@@ -130,6 +131,10 @@ async function load(fileId: string) {
       try {
         await openPdf(data.previewUrl);
       } catch (error: any) {
+        // 签名地址可能在“拿到元信息 → 真正拉文件”之间失效，先重取一次地址重试；
+        // 仍失败才报错，否则用户只能看到一句“加载失败”然后手动刷新
+        const retried = await retryWithFreshUrl(data.previewUrl);
+        if (retried) return;
         // 文件损坏、加密等情况：必须说清楚并给出下载入口，
         // 不能让用户面对一片空白画布和“/ 0 页”
         errorMessage.value =
@@ -140,6 +145,39 @@ async function load(fileId: string) {
     errorMessage.value = error?.message || "附件加载失败，请稍后重试";
   } finally {
     loading.value = false;
+  }
+}
+
+/**
+ * 确认当前元信息里的签名地址还够用；不够就重取一次（只刷地址，不重载文档）。
+ *
+ * 预览弹窗可能开着超过 15 分钟才去点下载/打印，那时 meta 里的地址已经作废；
+ * 不自愈就会让用户看到「地址无效或已过期」，而他自己并不知道为什么。
+ */
+async function ensureFreshMeta(
+  force = false
+): Promise<FilePreviewInfo | null> {
+  const info = meta.value;
+  if (!info) return null;
+  if (!force && isSignedUrlFresh(info.previewUrl) && isSignedUrlFresh(info.downloadUrl))
+    return info;
+
+  const res: any = await filePreviewQuery(props.fileId).catch(() => null);
+  const data: FilePreviewInfo | null = res?.data ?? null;
+  if (data) meta.value = data;
+  return data ?? info;
+}
+
+/** 用重新取到的地址再试一次加载（仅用于 PDF 拉取失败后的自愈） */
+async function retryWithFreshUrl(staleUrl: string): Promise<boolean> {
+  const info = await ensureFreshMeta(true);
+  if (!info?.previewable || !info.previewUrl || info.previewUrl === staleUrl)
+    return false;
+  try {
+    await openPdf(info.previewUrl);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -447,8 +485,9 @@ function rotate() {
   void renderPage();
 }
 
-function download() {
-  const url = meta.value?.downloadUrl || meta.value?.previewUrl;
+async function download() {
+  const info = await ensureFreshMeta();
+  const url = info?.downloadUrl || info?.previewUrl;
   if (!url) {
     message("下载地址不可用", { type: "warning" });
     return;
@@ -467,8 +506,9 @@ function download() {
  * 预览地址与站点同源（/api/v1 前缀），因此可直接调用 print；
  * 若被改到独立附件域名（跨域），这里退化为新窗口打开，不假装打印成功。
  */
-function print() {
-  const url = meta.value?.previewUrl;
+async function print() {
+  const info = await ensureFreshMeta();
+  const url = info?.previewUrl;
   if (!url) {
     message("预览地址不可用", { type: "warning" });
     return;
@@ -488,8 +528,9 @@ function print() {
   document.body.appendChild(iframe);
 }
 
-function openExternally() {
-  const url = meta.value?.previewUrl || meta.value?.downloadUrl;
+async function openExternally() {
+  const info = await ensureFreshMeta();
+  const url = info?.previewUrl || info?.downloadUrl;
   if (url) window.open(url, "_blank");
 }
 
