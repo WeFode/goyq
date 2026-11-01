@@ -31,13 +31,15 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 /**
- * 加签/退回/重新提交属于「动作」而不是「流程节点」，processTimeline 里没有它们。
- * 这里从 history 里挑出来单独展示，否则审批详情上根本看不到“这个人被加签过/被退回过”。
+ * 加签/退回/重新提交/条件分支属于「动作」而不是「流程节点」，processTimeline 里没有它们。
+ * 这里从 history 里挑出来单独展示，否则审批详情上根本看不到“这个人被加签过/被退回过”，
+ * 也解释不了为什么某个审批人没收到单（条件分支只走了一条）。
  */
 const actionLogs = computed(() =>
   (props.history ?? [])
     .filter((item: any) => {
       if (item.action === "addsign" || item.action === "return") return true;
+      if (item.action === "branch") return true;
       // 退回后的重新提交也走 submit 动作，靠意见文案区分首次发起
       return item.action === "submit" && String(item.comment ?? "").includes("重新提交");
     })
@@ -340,7 +342,7 @@ const nodeTypeLabel = (node: any) =>
       </div>
     </div>
 
-    <!-- 动作记录：加签 / 退回 / 重新提交 -->
+    <!-- 动作记录：加签 / 退回 / 重新提交 / 条件分支 -->
     <div v-if="actionLogs.length" class="app-timeline__logs">
       <div class="app-timeline__logs-title">操作记录</div>
       <div

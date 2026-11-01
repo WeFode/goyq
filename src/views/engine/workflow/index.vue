@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
+import { ElMessageBox } from "element-plus";
 import {
   addWorkflow,
   deleteWorkflow,
@@ -60,6 +61,21 @@ function nodeCount(processConfig: string) {
   }
 }
 
+/**
+ * 审批节点数量。新建时后端只落一个发起节点骨架，
+ * 所以“节点数 > 0”并不等于“流程可用”：没有审批节点的流程发起时会被后端拦住，
+ * 列表里必须单独把这个状态说清楚，否则用户会以为建完就能用。
+ */
+function approveNodeCount(processConfig: string) {
+  if (!processConfig) return 0;
+  try {
+    const nodes = JSON.parse(processConfig).nodes ?? [];
+    return nodes.filter((node: any) => node.type === "approve").length;
+  } catch {
+    return 0;
+  }
+}
+
 /* ============ 新增 / 编辑基础信息 ============ */
 const dialogVisible = ref(false);
 const dialogTitle = ref("新增工作流");
@@ -75,7 +91,11 @@ const form = reactive({
 });
 
 const rules: FormRules = {
-  name: [{ required: true, message: "请填写流程名称", trigger: "blur" }]
+  name: [{ required: true, message: "请填写流程名称", trigger: "blur" }],
+  // 后端 formDesignId 必填（审批单的数据载体），不标出来会直接吃一个接口错误
+  formDesignId: [
+    { required: true, message: "请选择关联表单", trigger: "change" }
+  ]
 };
 
 function openCreate() {
@@ -122,7 +142,27 @@ async function submit() {
         await updateWorkflow(editId.value, payload);
         message("保存成功", { type: "success" });
       } else {
-        await addWorkflow(payload);
+        const res: any = await addWorkflow(payload);
+        const createdId = res?.data?.id ?? "";
+        dialogVisible.value = false;
+        refresh();
+        // 流程只建了壳，不引导一下用户会不知道去哪里画节点
+        if (createdId) {
+          try {
+            await ElMessageBox.confirm(
+              "流程已创建，当前还没有审批节点，无法发起审批。现在去设计流程节点？",
+              "新增成功",
+              { confirmButtonText: "去设计流程", cancelButtonText: "稍后再说", type: "success" }
+            );
+            router.push({
+              path: "/engine/designer/index",
+              query: { id: createdId }
+            });
+          } catch {
+            /* 选择稍后再说，停在列表 */
+          }
+          return;
+        }
         message("新增成功，请继续配置流程节点", { type: "success" });
       }
       dialogVisible.value = false;
@@ -257,9 +297,12 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="节点数" width="90" align="center">
+      <el-table-column label="节点数" width="110" align="center">
         <template #default="{ row }">
-          {{ nodeCount(row.processConfig) }}
+          <el-tag v-if="!approveNodeCount(row.processConfig)" type="warning" size="small">
+            未配置流程
+          </el-tag>
+          <span v-else>{{ nodeCount(row.processConfig) }}</span>
         </template>
       </el-table-column>
 

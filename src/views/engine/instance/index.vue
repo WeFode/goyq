@@ -304,7 +304,9 @@ async function handleApprove(data: any) {
     if (data.result === "approve") {
       await approveInstance(taskId, {
         comment: data.comment,
-        fileIds: data.fileIds ?? []
+        fileIds: data.fileIds ?? [],
+        // 本节点字段权限允许修改时随审批一并提交；后端会再校一道
+        formDataPatch: data.formDataPatch
       });
       message("审批通过", { type: "success" });
     } else {

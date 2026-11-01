@@ -70,6 +70,7 @@ export const APPROVAL_ACTION: Record<string, string> = {
   submit: "提交",
   reinitiate: "重新发起",
   complete: "结束",
+  branch: "条件分支",
   start: "发起"
 };
 
@@ -81,6 +82,50 @@ export const APPROVE_TYPE: Record<string, string> = {
   any: "或签",
   all: "会签",
   sequence: "顺序审批"
+};
+
+/**
+ * 审批人来源
+ *
+ * 动态类型存的是规则而不是名单，所以选中它们时不需要（也不允许）手选具体人；
+ * 文案用“由…解析”结尾提醒用户这是运行时算出来的，避免他以为现在就该看到人。
+ */
+export const ASSIGNMENT_TYPE: Record<string, string> = {
+  specificUser: "指定成员",
+  roleGroup: "角色组",
+  deptGroup: "部门全员",
+  initiatorLeader: "发起人直属上级",
+  deptLeader: "发起人部门主管",
+  multiLevelLeader: "发起人连续多级上级",
+  formUser: "表单里的人员字段",
+  specifiedDeptLeader: "指定部门的主管"
+};
+
+/** 需要手选具体对象的审批人类型 */
+export const STATIC_ASSIGNMENTS = ["specificUser", "roleGroup", "deptGroup"];
+
+/** 节点超时动作 */
+export const TIMEOUT_ACTION: Record<string, string> = {
+  remind: "仅提醒",
+  autoApprove: "自动通过",
+  autoReject: "自动驳回",
+  transfer: "转交他人"
+};
+
+/** 审批人为空时的策略 */
+export const EMPTY_APPROVER_POLICY: Record<string, string> = {
+  error: "报错并阻止流转",
+  autoPass: "自动跳过本节点",
+  transferAdmin: "转交单位管理员",
+  transferTo: "转交指定人"
+};
+
+/** 审批人去重策略 */
+export const DEDUP_POLICY: Record<string, string> = {
+  none: "不去重",
+  autoPass: "已签过则自动通过",
+  skipTask: "不再给他派待办",
+  transferInit: "转回发起人"
 };
 
 /** 节点类型 */

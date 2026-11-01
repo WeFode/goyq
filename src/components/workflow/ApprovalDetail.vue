@@ -81,6 +81,79 @@ const canReinitiate = computed(() => {
 /* ============ 表单字段 ============ */
 const fields = computed<any[]>(() => props.formConfig?.fields ?? []);
 
+/**
+ * 本节点可见字段
+ *
+ * 后端没下发权限清单时全部可见（存量流程行为不变）；
+ * 下发了清单时，被标为不可见的字段连标签都不占位——
+ * “隐藏”如果只做到不渲染值，标题还在那儿，依旧会泄露“有这个字段”。
+ */
+const visibleFields = computed(() => {
+  const permissions: any[] = props.permission?.fieldPermissions ?? [];
+  if (!permissions.length) return fields.value;
+  const defaultVisible = props.permission?.defaultFieldVisible !== false;
+  return fields.value.filter(field => {
+    const hit = permissions.find(item => item.field === field.name);
+    return hit ? hit.visible !== false : defaultVisible;
+  });
+});
+
+/** 本节点可改字段：必须同时可见与可改 */
+const editableFields = computed(() => {
+  const permissions: any[] = props.permission?.fieldPermissions ?? [];
+  if (!permissions.length) return [];
+  const defaultEditable = props.permission?.defaultFieldEditable === true;
+  return visibleFields.value.filter(field => {
+    const hit = permissions.find(item => item.field === field.name);
+    return hit ? hit.editable === true : defaultEditable;
+  });
+});
+
+const canEditForm = computed(
+  () => canApprove.value && props.permission?.canEditForm === true && editableFields.value.length > 0
+);
+
+/** 本节点标了必填的字段名（后端在同意时会再校一道，这里只用于文案提示） */
+const requiredFieldNames = computed(() => {
+  const permissions: any[] = props.permission?.fieldPermissions ?? [];
+  return permissions.filter(item => item.required).map(item => item.field);
+});
+
+/** 必填字段的中文标签，直接告诉审批人要填哪几项，不让人提交时才看到报错 */
+const requiredFieldLabels = computed(() =>
+  requiredFieldNames.value.map(
+    name => fields.value.find(field => field.name === name)?.label ?? name
+  )
+);
+
+/** 审批人可改字段的草稿值 */
+const formDraft = reactive<Record<string, any>>({});
+
+function resetFormDraft() {
+  Object.keys(formDraft).forEach(key => delete formDraft[key]);
+  if (!canEditForm.value) return;
+  editableFields.value.forEach(field => {
+    formDraft[field.name] = props.detail?.formData?.[field.name];
+  });
+}
+
+watch(() => [props.detail?.id, canEditForm.value], resetFormDraft, { immediate: true });
+
+/** 只提交真正改过的字段，避免把整个表单重写一遍 */
+const formDataPatch = computed(() => {
+  if (!canEditForm.value) return undefined;
+  const patch: Record<string, any> = {};
+  Object.keys(formDraft).forEach(key => {
+    const before = props.detail?.formData?.[key];
+    if (JSON.stringify(formDraft[key]) !== JSON.stringify(before)) {
+      patch[key] = formDraft[key];
+    }
+  });
+  return Object.keys(patch).length ? patch : undefined;
+});
+
+const hasFormChanges = computed(() => Boolean(formDataPatch.value));
+
 const fullSpanTypes = [
   "el-textarea",
   "el-upload",
@@ -142,7 +215,8 @@ async function submitApprove() {
     emit("approve", {
       result: approveForm.result,
       comment: approveForm.comment,
-      fileIds: approveForm.attachments.map(file => file.id)
+      fileIds: approveForm.attachments.map(file => file.id),
+      formDataPatch: approveForm.result === "approve" ? formDataPatch.value : undefined
     });
     approveSubmitting.value = false;
     approveVisible.value = false;
@@ -609,7 +683,7 @@ watch(
             </el-descriptions-item>
 
             <el-descriptions-item
-              v-for="field in fields"
+              v-for="field in visibleFields"
               :key="field.name"
               :label="field.label"
               :span="fieldSpan(field)"
@@ -620,6 +694,29 @@ watch(
               />
             </el-descriptions-item>
           </el-descriptions>
+
+          <!-- 本节点可改字段：单独一块，不让审批人在只读表单里找哪个能改 -->
+          <div v-if="canEditForm" class="app-approval__edit">
+            <div class="app-approval__edit-head">
+              <AppIcon icon="ep:edit" :size="14" />
+              <span>本节点可修改 {{ editableFields.length }} 项</span>
+              <em v-if="hasFormChanges" class="app-approval__edit-flag">
+                已修改，同意时一并保存
+              </em>
+              <em v-else class="app-approval__edit-muted">未修改则不提交</em>
+            </div>
+            <p class="app-approval__edit-tip">
+              <template v-if="requiredFieldLabels.length">
+                本节点必填：{{ requiredFieldLabels.join("、") }}；
+              </template>
+              修改内容会记入审批历史。
+            </p>
+            <WorkflowFormRenderer
+              v-model="formDraft"
+              :fields="editableFields"
+              label-width="96px"
+            />
+          </div>
         </AppDetailSection>
 
         <AppDetailSection title="评论记录">
@@ -944,6 +1041,46 @@ watch(
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+
+  /* 本节点可改字段区：与上方只读表单明确分开 */
+  &__edit {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: var(--app-fill-light, #f7f8fa);
+    border: 1px solid var(--app-border);
+    border-left: 3px solid var(--app-primary);
+    border-radius: var(--app-radius-sm);
+  }
+
+  &__edit-head {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: var(--app-font-13);
+    font-weight: 600;
+    color: var(--app-text-1);
+  }
+
+  &__edit-flag {
+    padding: 0 6px;
+    font-size: var(--app-font-12);
+    font-style: normal;
+    color: var(--app-primary);
+    background: var(--app-primary-bg);
+    border-radius: 8px;
+  }
+
+  &__edit-muted {
+    font-size: var(--app-font-12);
+    font-style: normal;
+    color: var(--app-text-3);
+  }
+
+  &__edit-tip {
+    margin: 4px 0 10px;
+    font-size: var(--app-font-12);
+    color: var(--app-text-3);
   }
 }
 
